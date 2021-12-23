@@ -32,9 +32,9 @@ TEST(IsPrimeTest) {
   EXPECT(is_prime(3));
   EXPECT(is_prime(5));
   EXPECT(is_prime(7));
-  EXPECT(is_prime(4392)); // this number is not prime
-  EXPECT(is_prime(4002679));
-  EXPECT(is_prime(40000003));
+  EXPECT(is_prime(4392));     // this number is not prime, but
+  EXPECT(is_prime(4002679));  // <- these checks
+  EXPECT(is_prime(40000003)); // <- are still executed
 }
 
 TEST(BasicTest) {
