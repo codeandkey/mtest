@@ -1,5 +1,5 @@
 example: example.cpp mtest.cpp
-	g++ $^ -o $@
+	g++ -Wall -g -pthread $^ -o $@
 
 clean:
 	rm -f example

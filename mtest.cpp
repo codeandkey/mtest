@@ -5,6 +5,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #else
+#include <pthread.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #endif
@@ -19,21 +20,48 @@
 #define BLUE 2
 #define RESET 3
 
+#define BWAIT 10000
+
+#ifdef _WIN32
+typedef struct {
+  HANDLE handle;
+  HANDLE mutex;
+  int req;
+} mtest_thread;
+#else
+typedef struct {
+  pthread_t handle;
+  pthread_mutex_t mutex;
+  int req;
+} mtest_thread;
+static pthread_mutex_t out_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
 static _mtest_t **all_tests;
 static int num_tests;
+static mtest_thread *threads;
+static int num_threads;
+static int total_failures;
+static int failed_tests;
+static int total_tested;
 
 static int _get_terminal_width();
 static char *_print_into_buf(const char *fmt, va_list args);
 static void _print_centered_header(const char *fmt, ...);
 static void _set_color(int col);
 
+static void mtest_thread_init(mtest_thread* m);
+static void mtest_lock(mtest_thread* m);
+static int  mtest_trylock(mtest_thread* m);
+static void mtest_unlock(mtest_thread* m);
+static void mtest_join(mtest_thread* m);
+
+static void* mtest_thread_main(void* ud);
+
 int mtest_main(int argc, char **argv) {
   char datestr[100];
   time_t now = time(NULL);
   struct tm *t = localtime(&now);
-
-  int total_failures = 0;
-  int failed_tests = 0;
 
   clock_t tstart_time = clock();
 
@@ -41,29 +69,71 @@ int mtest_main(int argc, char **argv) {
 
   _print_centered_header("TEST RUN (%d total): %s", num_tests, datestr);
 
+#ifdef _WIN32
+  SYSTEM_INFO info;
+  GetSystemInfo(&info);
+  num_threads = info.dwNumberOfProcessors;
+#else
+  num_threads = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+  printf("    > Starting tests on %d threads\n", num_threads);
+
+  // Initialize worker threads
+  threads = (mtest_thread*) malloc(sizeof(mtest_thread) * num_threads);
+  for (int i = 0; i < num_threads; ++i) {
+    mtest_thread_init(&threads[i]);
+  }
+
   for (int i = 0; i < num_tests; ++i) {
-    printf("    %d / %d    %s ... ", i + 1, num_tests, all_tests[i]->tname);
-    fflush(stdout);
+    // Wait for free worker
+    int assigned = 0;
+    while (!assigned) {
+      for (int j = 0; j < num_threads; ++j) {
+        if (mtest_trylock(&threads[j])) {
+          if (threads[j].req == -1) {
+            assigned = 1;
+            threads[j].req = i;
 
-    clock_t start_time = clock();
-    all_tests[i]->testfun(all_tests[i]);
-    clock_t end_time = clock();
+            mtest_unlock(&threads[j]);
+            break;
+          } else {
+            mtest_unlock(&threads[j]);
+          }
+        }
+      }
 
-    if (all_tests[i]->num_failures) {
-      _set_color(RED);
-      printf("FAILED ");
-      _set_color(RESET);
+      usleep(BWAIT);
+    }
+  }
 
-      failed_tests++;
-    } else {
-      _set_color(GREEN);
-      printf("OK     ");
-      _set_color(RESET);
+  // Wait for each thread to complete
+  int done = 0;
+  while (!done) {
+    done = 1;
+
+    for (int i = 0; i < num_threads; ++i) {
+        if (mtest_trylock(&threads[i])) {
+          if (threads[i].req != -1) {
+            done = 0;
+            break;
+          }
+          mtest_unlock(&threads[i]);
+        }
     }
 
-    printf("( %lu ms )\n", (end_time - start_time) / (CLOCKS_PER_SEC / 1000));
+    usleep(BWAIT);
+  }
 
-    total_failures += all_tests[i]->num_failures;
+  // Tell threads to stop
+  for (int i = 0; i < num_threads; ++i) {
+    mtest_lock(&threads[i]);
+    threads[i].req = -2;
+    mtest_unlock(&threads[i]);
+  }
+
+  // Join remaining threads
+  for (int i = 0; i < num_threads; ++i) {
+    mtest_join(&threads[i]);
   }
 
   clock_t tend_time = clock();
@@ -215,4 +285,105 @@ void _set_color(int col) {
   }
 #endif
 #endif
+}
+
+void mtest_thread_init(mtest_thread* m) {
+  m->req = -1;
+
+#ifdef _WIN32
+#error W32 thread
+#else
+  pthread_mutex_init(&m->mutex, NULL);
+  pthread_create(&m->handle, NULL, mtest_thread_main, (void*) m);
+#endif
+}
+
+void mtest_lock(mtest_thread *m) {
+#ifdef _WIN32
+#error W32 mutex
+#else
+  pthread_mutex_lock(&m->mutex);
+#endif
+}
+
+int mtest_trylock(mtest_thread *m) {
+#ifdef _WIN32
+#error W32 mutex
+#else
+  return !pthread_mutex_trylock(&m->mutex);
+#endif
+}
+
+void mtest_unlock(mtest_thread *m) {
+#ifdef _WIN32
+#error W32 mutex
+#else
+  pthread_mutex_unlock(&m->mutex);
+#endif
+}
+
+void mtest_join(mtest_thread *m) {
+#ifdef _WIN32
+#error W32 mutex
+#else
+  pthread_join(m->handle, NULL);
+#endif
+}
+
+void* mtest_thread_main(void* ud) {
+  mtest_thread* self = (mtest_thread*) ud;
+
+  while (1) {
+    mtest_lock(self);
+    int creq = self->req;
+    mtest_unlock(self);
+
+    if (self->req == -2) {
+      break;
+    }
+
+    if (self->req == -1) {
+      usleep(BWAIT);
+      continue;
+    }
+
+    // Run test!
+    clock_t start_time = clock();
+    all_tests[creq]->testfun(all_tests[creq]);
+    clock_t end_time = clock();
+
+    // Acquire output mutex
+#ifdef _WIN32
+#error W32 mutex
+#else
+    pthread_mutex_lock(&out_mutex);
+#endif
+    printf("    [%lu] %d / %d    %s ... ", self - threads, ++total_tested, num_tests, all_tests[creq]->tname);
+    if (all_tests[creq]->num_failures) {
+      _set_color(RED);
+      printf("FAILED ");
+      _set_color(RESET);
+
+      ++failed_tests;
+    } else {
+      _set_color(GREEN);
+      printf("OK     ");
+      _set_color(RESET);
+    }
+
+    printf("( %lu ms )\n", (end_time - start_time) / (CLOCKS_PER_SEC / 1000));
+
+    total_failures += all_tests[creq]->num_failures;
+#ifdef _WIN32
+#error W32 mutex
+#else
+    pthread_mutex_unlock(&out_mutex);
+#endif
+    
+    mtest_lock(self);
+    self->req = -1;
+    mtest_unlock(self);
+  }
+
+  return NULL;
 }
