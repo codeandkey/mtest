@@ -1,4 +1,4 @@
-example: example.cpp mtest.cpp
+example: example.c mtest.c
 	g++ -Wall -g -pthread $^ -o $@
 
 clean:
