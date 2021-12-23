@@ -46,7 +46,7 @@ int mtest_main(int argc, char** argv) {
     }
 
     if (total_failures) {
-        printf("======== SUMMARY OF %d FAILED TEST%s ========\n", failed_tests, (failed_tests > 1) ? "s" : "");
+        printf("======== SUMMARY OF %d FAILED TEST%s ========\n", failed_tests, (failed_tests > 1) ? "S" : "");
 
         for (int i = 0; i < num_tests; ++i) {
             if (all_tests[i]->num_failures) {
