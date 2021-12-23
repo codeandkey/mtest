@@ -21,6 +21,7 @@
 #define RESET 3
 
 #define BWAIT 10000
+#define STATUS_WAIT 250000
 
 #ifdef _WIN32
 typedef struct {
@@ -35,6 +36,7 @@ typedef struct {
   int req;
 } mtest_thread;
 static pthread_mutex_t out_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t status_thread;
 #endif
 
 static _mtest_t **all_tests;
@@ -46,6 +48,7 @@ static int failed_tests;
 static int total_tested;
 
 static int _get_terminal_width();
+static void _clear_row();
 static char *_print_into_buf(const char *fmt, va_list args);
 static void _print_centered_header(const char *fmt, ...);
 static void _set_color(int col);
@@ -56,6 +59,7 @@ static int  mtest_trylock(mtest_thread* m);
 static void mtest_unlock(mtest_thread* m);
 static void mtest_join(mtest_thread* m);
 
+static void* mtest_status_main(void* ud);
 static void* mtest_thread_main(void* ud);
 
 int mtest_main(int argc, char **argv) {
@@ -83,6 +87,13 @@ int mtest_main(int argc, char **argv) {
   for (int i = 0; i < num_threads; ++i) {
     mtest_thread_init(&threads[i]);
   }
+
+  // Initialize status thread
+#ifdef _WIN32
+#error W32 thread
+#else
+  pthread_create(&status_thread, NULL, mtest_status_main, NULL);
+#endif
 
   for (int i = 0; i < num_tests; ++i) {
     // Wait for free worker
@@ -138,7 +149,15 @@ int mtest_main(int argc, char **argv) {
     mtest_join(&threads[i]);
   }
 
+  // Wait for status thread
+#ifdef _WIN32
+#error W32 thread
+#else
+  pthread_join(status_thread, NULL);
+#endif
+
   clock_t tend_time = clock();
+  _clear_row();
   printf("    > Finished testing in %.1f seconds\n", (float) (tend_time - tstart_time) / CLOCKS_PER_SEC);
 
   if (total_failures) {
@@ -360,6 +379,7 @@ void* mtest_thread_main(void* ud) {
 #else
     pthread_mutex_lock(&out_mutex);
 #endif
+    _clear_row();
     printf("    [%lu] %d / %d    %s ... ", self - threads, ++total_tested, num_tests, all_tests[creq]->tname);
     if (all_tests[creq]->num_failures) {
       _set_color(RED);
@@ -388,4 +408,56 @@ void* mtest_thread_main(void* ud) {
   }
 
   return NULL;
+}
+
+void* mtest_status_main(void* ud) {
+  int done = 0;
+  while (!done) {
+    done = 1;
+#ifdef _WIN32
+#error W32 mutex
+#else
+    pthread_mutex_lock(&out_mutex);
+#endif
+    _clear_row();
+    printf("[");
+    for (int i = 0; i < num_threads; ++i) {
+      mtest_lock(&threads[i]);
+      int cur = threads[i].req;
+      mtest_unlock(&threads[i]);
+
+      if (cur != -2) done = 0;
+
+      if (cur == -2) {
+        printf("JOINING");
+      } else if (cur == -1) {
+        printf("IDLE");
+      } else {
+        printf("%s", all_tests[cur]->tname);
+      }
+
+      if (i < num_threads - 1) {
+        printf(", ");
+      }
+    }
+    printf("]");
+    fflush(stdout);
+#ifdef _WIN32
+#error W32 mutex
+#else
+    pthread_mutex_unlock(&out_mutex);
+#endif
+    usleep(STATUS_WAIT);
+  }
+
+  return NULL;
+}
+
+void _clear_row() {
+    int width = _get_terminal_width();
+    char* clr = (char*) malloc(width + 1);
+    memset(clr, ' ', width);
+    clr[width] = '\0';
+    printf("\r%s\r", clr);
+    free(clr);
 }
