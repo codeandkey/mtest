@@ -28,7 +28,7 @@ int is_prime(int n) {
 TEST(IsPrimeTest) {
   // EXPECT() allows us to test a condition which _should_ be true;
   // if it is not, we note the failure but continue on in the test.
- 
+
   EXPECT(is_prime(3));
   EXPECT(is_prime(5));
   EXPECT(is_prime(7));
@@ -49,25 +49,35 @@ TEST(BasicTest) {
 }
 
 // Test which always passes
-TEST(OkTest) {
-  EXPECT(1);
-}
+TEST(OkTest) { EXPECT(1); }
 
 // Some tests which take longer
 TEST(LongTest1) {
-    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+  for (int j = 0; j < 100000000; ++j) {
+    j += 1;
+    j -= 1;
+  }
 }
 
 TEST(LongTest2) {
-    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+  for (int j = 0; j < 100000000; ++j) {
+    j += 1;
+    j -= 1;
+  }
 }
 
 TEST(LongTest3) {
-    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+  for (int j = 0; j < 100000000; ++j) {
+    j += 1;
+    j -= 1;
+  }
 }
 
 TEST(LongTest4) {
-    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+  for (int j = 0; j < 100000000; ++j) {
+    j += 1;
+    j -= 1;
+  }
 }
 
 // To run your tests, call mtest_main() with the command-line arguments.

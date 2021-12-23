@@ -1,4 +1,5 @@
-/* vim: set ts=2 sw=2: */
+// SPDX-License-Identifier: MIT
+// vim: set ts=2 sw=2:
 
 #include "mtest.h"
 
@@ -56,14 +57,14 @@ static void _print_centered_header(const char *fmt, ...);
 static void _set_color(int col);
 static void _cleanup();
 
-static void mtest_thread_init(mtest_thread* m);
-static void mtest_lock(mtest_thread* m);
-static int  mtest_trylock(mtest_thread* m);
-static void mtest_unlock(mtest_thread* m);
-static void mtest_join(mtest_thread* m);
+static void mtest_thread_init(mtest_thread *m);
+static void mtest_lock(mtest_thread *m);
+static int mtest_trylock(mtest_thread *m);
+static void mtest_unlock(mtest_thread *m);
+static void mtest_join(mtest_thread *m);
 
-static void* mtest_status_main(void* ud);
-static void* mtest_thread_main(void* ud);
+static void *mtest_status_main(void *ud);
+static void *mtest_thread_main(void *ud);
 
 int mtest_main(int argc, char **argv) {
   char datestr[100];
@@ -95,7 +96,7 @@ int mtest_main(int argc, char **argv) {
   }
 
   // Initialize worker threads
-  threads = (mtest_thread*) malloc(sizeof(mtest_thread) * num_threads);
+  threads = (mtest_thread *)malloc(sizeof(mtest_thread) * num_threads);
   for (int i = 0; i < num_threads; ++i) {
     mtest_thread_init(&threads[i]);
   }
@@ -135,15 +136,15 @@ int mtest_main(int argc, char **argv) {
     done = 1;
 
     for (int i = 0; i < num_threads; ++i) {
-        mtest_lock(&threads[i]);
+      mtest_lock(&threads[i]);
 
-        if (threads[i].req != -1) {
-          done = 0;
-          mtest_unlock(&threads[i]);
-          break;
-        }
-
+      if (threads[i].req != -1) {
+        done = 0;
         mtest_unlock(&threads[i]);
+        break;
+      }
+
+      mtest_unlock(&threads[i]);
     }
 
     usleep(BWAIT);
@@ -170,7 +171,8 @@ int mtest_main(int argc, char **argv) {
 
   clock_t tend_time = clock();
   _clear_row();
-  printf("    > Finished testing in %.1f seconds\n", (float) (tend_time - tstart_time) / CLOCKS_PER_SEC);
+  printf("    > Finished testing in %.1f seconds\n",
+         (float)(tend_time - tstart_time) / CLOCKS_PER_SEC);
 
   if (total_failures) {
     _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,
@@ -321,14 +323,14 @@ void _set_color(int col) {
 #endif
 }
 
-void mtest_thread_init(mtest_thread* m) {
+void mtest_thread_init(mtest_thread *m) {
   m->req = -1;
 
 #ifdef _WIN32
 #error W32 thread
 #else
   pthread_mutex_init(&m->mutex, NULL);
-  pthread_create(&m->handle, NULL, mtest_thread_main, (void*) m);
+  pthread_create(&m->handle, NULL, mtest_thread_main, (void *)m);
 #endif
 }
 
@@ -364,8 +366,8 @@ void mtest_join(mtest_thread *m) {
 #endif
 }
 
-void* mtest_thread_main(void* ud) {
-  mtest_thread* self = (mtest_thread*) ud;
+void *mtest_thread_main(void *ud) {
+  mtest_thread *self = (mtest_thread *)ud;
 
   while (1) {
     mtest_lock(self);
@@ -393,7 +395,9 @@ void* mtest_thread_main(void* ud) {
     pthread_mutex_lock(&out_mutex);
 #endif
     _clear_row();
-    printf("    [%lu] %*d / %d    %*s ... ", self - threads, 1 + (int) log10(num_tests), ++total_tested, num_tests, max_testlen, all_tests[creq]->tname);
+    printf("    [%lu] %*d / %d    %*s ... ", self - threads,
+           1 + (int)log10(num_tests), ++total_tested, num_tests, max_testlen,
+           all_tests[creq]->tname);
     if (all_tests[creq]->num_failures) {
       _set_color(RED);
       printf("FAILED ");
@@ -414,7 +418,7 @@ void* mtest_thread_main(void* ud) {
 #else
     pthread_mutex_unlock(&out_mutex);
 #endif
-    
+
     mtest_lock(self);
     self->req = -1;
     mtest_unlock(self);
@@ -423,7 +427,7 @@ void* mtest_thread_main(void* ud) {
   return NULL;
 }
 
-void* mtest_status_main(void* ud) {
+void *mtest_status_main(void *ud) {
   int done = 0;
   while (!done) {
     done = 1;
@@ -439,7 +443,8 @@ void* mtest_status_main(void* ud) {
       int cur = threads[i].req;
       mtest_unlock(&threads[i]);
 
-      if (cur != -2) done = 0;
+      if (cur != -2)
+        done = 0;
 
       if (cur == -2) {
         printf("(joining)");
@@ -467,12 +472,12 @@ void* mtest_status_main(void* ud) {
 }
 
 void _clear_row() {
-    int width = _get_terminal_width();
-    char* clr = (char*) malloc(width + 1);
-    memset(clr, ' ', width);
-    clr[width] = '\0';
-    printf("\r%s\r", clr);
-    free(clr);
+  int width = _get_terminal_width();
+  char *clr = (char *)malloc(width + 1);
+  memset(clr, ' ', width);
+  clr[width] = '\0';
+  printf("\r%s\r", clr);
+  free(clr);
 }
 
 void _cleanup() {
