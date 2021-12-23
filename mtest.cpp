@@ -112,13 +112,15 @@ int mtest_main(int argc, char **argv) {
     done = 1;
 
     for (int i = 0; i < num_threads; ++i) {
-        if (mtest_trylock(&threads[i])) {
-          if (threads[i].req != -1) {
-            done = 0;
-            break;
-          }
+        mtest_lock(&threads[i]);
+
+        if (threads[i].req != -1) {
+          done = 0;
           mtest_unlock(&threads[i]);
+          break;
         }
+
+        mtest_unlock(&threads[i]);
     }
 
     usleep(BWAIT);
