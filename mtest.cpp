@@ -429,9 +429,9 @@ void* mtest_status_main(void* ud) {
       if (cur != -2) done = 0;
 
       if (cur == -2) {
-        printf("JOINING");
+        printf("(joining)");
       } else if (cur == -1) {
-        printf("IDLE");
+        printf("(idle)");
       } else {
         printf("%s", all_tests[cur]->tname);
       }
