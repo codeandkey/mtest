@@ -83,7 +83,7 @@ int mtest_main(int argc, char **argv) {
       }
     }
   } else {
-    printf("======== ALL TESTS PASSED ========\n");
+    _print_centered_header("ALL TESTS PASSED");
   }
 
   return total_failures ? -1 : 0;
