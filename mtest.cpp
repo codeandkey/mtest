@@ -13,20 +13,6 @@
 static _mtest_t** all_tests;
 static int num_tests;
 
-int _mtest_add(_mtest_t* tstruct) {
-    ++num_tests;
-
-    if (!all_tests) {
-        all_tests = (_mtest_t**) malloc(sizeof(*all_tests));
-    } else {
-        all_tests = (_mtest_t**) realloc(all_tests, sizeof(*all_tests) * num_tests);
-    }
-
-    all_tests[num_tests - 1] = tstruct;
-
-    return num_tests;
-}
-
 int mtest_main(int argc, char** argv) {
     char datestr[100];
     time_t now = time(NULL);
@@ -76,6 +62,20 @@ int mtest_main(int argc, char** argv) {
     }
 
     return total_failures ? -1 : 0;
+}
+
+int _mtest_add(_mtest_t* tstruct) {
+    ++num_tests;
+
+    if (!all_tests) {
+        all_tests = (_mtest_t**) malloc(sizeof(*all_tests));
+    } else {
+        all_tests = (_mtest_t**) realloc(all_tests, sizeof(*all_tests) * num_tests);
+    }
+
+    all_tests[num_tests - 1] = tstruct;
+
+    return num_tests;
 }
 
 void _mtest_fail(void* self, const char* fmt, ...) {
