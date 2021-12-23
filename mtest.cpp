@@ -54,6 +54,7 @@ static void _clear_row();
 static char *_print_into_buf(const char *fmt, va_list args);
 static void _print_centered_header(const char *fmt, ...);
 static void _set_color(int col);
+static void _cleanup();
 
 static void mtest_thread_init(mtest_thread* m);
 static void mtest_lock(mtest_thread* m);
@@ -188,6 +189,7 @@ int mtest_main(int argc, char **argv) {
     _print_centered_header("ALL TESTS PASSED");
   }
 
+  _cleanup();
   return total_failures ? -1 : 0;
 }
 
@@ -471,4 +473,17 @@ void _clear_row() {
     clr[width] = '\0';
     printf("\r%s\r", clr);
     free(clr);
+}
+
+void _cleanup() {
+  for (int i = 0; i < num_tests; ++i) {
+    for (int j = 0; j < all_tests[i]->num_failures; ++j) {
+      free(all_tests[i]->failures[j]);
+    }
+
+    free(all_tests[i]->failures);
+  }
+
+  free(all_tests);
+  free(threads);
 }
