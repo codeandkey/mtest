@@ -30,12 +30,12 @@ typedef struct {
 
 #define EXPECT(cond) \
     { if (!(cond)) { \
-        _mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] expected \"" #cond "\", to be true, found false"); \
+        _mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] failed expectation \"" #cond "\""); \
     }} \
 
 #define ASSERT(cond) \
     { if (!(cond)) { \
-        _mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] asserted \"" #cond "\", to be true, found false"); \
+        _mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] failed assertion \"" #cond "\", aborting test"); \
         return; \
     }} \
 
