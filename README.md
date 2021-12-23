@@ -9,7 +9,7 @@ mtest is a minimal testing framework for C/C++.
 
 ## Requirements
 - Windows or UNIX-like host
-- pthreads (UNIX-like only)
+- pthreads (UNIX only)
 - A compiler supporting ANSI C99
 
 ## Usage
