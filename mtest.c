@@ -307,16 +307,16 @@ void _set_color(int col) {
 #else
   switch (col) {
   case RED:
-    printf("\u001b[31m");
+    printf("\e[31m");
     break;
   case GREEN:
-    printf("\u001b[32m");
+    printf("\e[32m");
     break;
   case BLUE:
-    printf("\u001b[34m");
+    printf("\e[34m");
     break;
   case RESET:
-    printf("\u001b[0m");
+    printf("\e[0m");
     break;
   }
 #endif
