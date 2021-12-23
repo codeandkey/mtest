@@ -13,7 +13,7 @@
 static _mtest_t** all_tests;
 static int num_tests;
 
-int mtest_add(_mtest_t* tstruct) {
+int _mtest_add(_mtest_t* tstruct) {
     ++num_tests;
 
     if (!all_tests) {
@@ -78,7 +78,7 @@ int mtest_main(int argc, char** argv) {
     return total_failures ? -1 : 0;
 }
 
-void mtest_fail(void* self, const char* fmt, ...) {
+void _mtest_fail(void* self, const char* fmt, ...) {
     va_list ap;
     int len = 0;
     char* nfailure = 0;

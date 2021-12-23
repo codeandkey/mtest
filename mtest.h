@@ -25,23 +25,23 @@ typedef struct {
         .failures = (char**) 0, \
         .num_failures = 0 \
     }; \
-    static int _test_add_ ##name = mtest_add(&_test_s##name); \
+    static int _test_add_ ##name = _mtest_add(&_test_s##name); \
     void _test_##name(void* __self)
 
 #define EXPECT(cond) \
     { if (!(cond)) { \
-        mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] expected \"" #cond "\", to be true, found false"); \
+        _mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] expected \"" #cond "\", to be true, found false"); \
     }} \
 
 #define ASSERT(cond) \
     { if (!(cond)) { \
-        mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] asserted \"" #cond "\", to be true, found false"); \
+        _mtest_fail(__self, "[" __FILE__ ":" STRINGIFY(__LINE__) "] asserted \"" #cond "\", to be true, found false"); \
         return; \
     }} \
 
 int mtest_main(int argc, char** argv);
-int mtest_add(_mtest_t* tstruct);
 
-void mtest_fail(void* self, const char* fmt, ...);
+int _mtest_add(_mtest_t* tstruct);
+void _mtest_fail(void* self, const char* fmt, ...);
 
 #endif
