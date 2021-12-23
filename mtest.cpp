@@ -10,6 +10,7 @@
 #include <unistd.h>
 #endif
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +47,7 @@ static int num_threads;
 static int total_failures;
 static int failed_tests;
 static int total_tested;
+static int max_testlen;
 
 static int _get_terminal_width();
 static void _clear_row();
@@ -81,6 +83,15 @@ int mtest_main(int argc, char **argv) {
   num_threads = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
   printf("    > Testing on %d threads\n", num_threads);
+
+  // Determine name alignment
+  for (int i = 0; i < num_tests; ++i) {
+    int len = strlen(all_tests[i]->tname);
+
+    if (len > max_testlen) {
+      max_testlen = len;
+    }
+  }
 
   // Initialize worker threads
   threads = (mtest_thread*) malloc(sizeof(mtest_thread) * num_threads);
@@ -380,7 +391,7 @@ void* mtest_thread_main(void* ud) {
     pthread_mutex_lock(&out_mutex);
 #endif
     _clear_row();
-    printf("    [%lu] %d / %d    %s ... ", self - threads, ++total_tested, num_tests, all_tests[creq]->tname);
+    printf("    [%lu] %*d / %d    %*s ... ", self - threads, 1 + (int) log10(num_tests), ++total_tested, num_tests, max_testlen, all_tests[creq]->tname);
     if (all_tests[creq]->num_failures) {
       _set_color(RED);
       printf("FAILED ");
