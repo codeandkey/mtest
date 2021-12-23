@@ -12,12 +12,18 @@
 #include <string.h>
 #include <time.h>
 
+#define RED 0
+#define GREEN 1
+#define BLUE 2
+#define RESET 3
+
 static _mtest_t **all_tests;
 static int num_tests;
 
 static int _get_terminal_width();
 static char *_print_into_buf(const char *fmt, va_list args);
 static void _print_centered_header(const char *fmt, ...);
+static void _set_color(int col);
 
 int mtest_main(int argc, char **argv) {
   char datestr[100];
@@ -40,10 +46,15 @@ int mtest_main(int argc, char **argv) {
     clock_t end_time = clock();
 
     if (all_tests[i]->num_failures) {
+      _set_color(RED);
       printf("FAILED ");
+      _set_color(RESET);
+
       failed_tests++;
     } else {
+      _set_color(GREEN);
       printf("OK     ");
+      _set_color(RESET);
     }
 
     printf("( %lu ms )\n", (end_time - start_time) / (CLOCKS_PER_SEC / 1000));
@@ -159,4 +170,27 @@ void _print_centered_header(const char *fmt, ...) {
 
   free(buf);
   free(pstr);
+}
+
+void _set_color(int col) {
+#ifndef MTEST_NOCOLOR
+#ifdef _WIN32
+#error Color not implemented on WIN32!
+#else
+    switch (col) {
+        case RED:
+            printf("\u001b[31m");
+            break;
+        case GREEN:
+            printf("\u001b[32m");
+            break;
+        case BLUE:
+            printf("\u001b[34m");
+            break;
+        case RESET:
+            printf("\u001b[0m");
+            break;
+    }
+#endif
+#endif
 }
