@@ -1,11 +1,7 @@
 #ifndef MTEST_H
 #define MTEST_H
 
-#ifdef __cplusplus
-#include <cstdarg>
-#else
 #include <stdarg.h>
-#endif
 
 typedef struct {
     void (*testfun)(void* self);
