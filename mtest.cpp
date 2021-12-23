@@ -1,17 +1,23 @@
 #include "mtest.h"
 
-#ifdef _cplusplus
-#include <cstdlib>
-#include <cstdio>
-#include <ctime>
+#ifdef _WIN32
+#include <Windows.h>
 #else
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
-#endif
 
 static _mtest_t** all_tests;
 static int num_tests;
+
+static int _get_terminal_width();
+static char* _print_into_buf(const char* fmt, va_list args);
+static void _print_centered_header(const char* fmt, ...);
 
 int mtest_main(int argc, char** argv) {
     char datestr[100];
@@ -23,7 +29,7 @@ int mtest_main(int argc, char** argv) {
 
     strftime(datestr, sizeof(datestr) - 1, "%m/%d/%Y %H:%H", t);
 
-    printf("======== TEST RUN (%d total): %15s ========\n", num_tests, datestr);
+    _print_centered_header("TEST RUN (%d total): %s", num_tests, datestr);
 
     for (int i = 0; i < num_tests; ++i) {
         printf("    %d / %d    %s ... ", i + 1, num_tests, all_tests[i]->tname);
@@ -46,7 +52,7 @@ int mtest_main(int argc, char** argv) {
     }
 
     if (total_failures) {
-        printf("======== SUMMARY OF %d FAILED TEST%s ========\n", failed_tests, (failed_tests > 1) ? "S" : "");
+        _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests, (failed_tests > 1) ? "S" : "");
 
         for (int i = 0; i < num_tests; ++i) {
             if (all_tests[i]->num_failures) {
@@ -79,19 +85,7 @@ int _mtest_add(_mtest_t* tstruct) {
 }
 
 void _mtest_fail(void* self, const char* fmt, ...) {
-    va_list ap;
-    int len = 0;
-    char* nfailure = 0;
-
-    va_start(ap, fmt);
-    len = vsnprintf(nfailure, len, fmt, ap);
-    va_end(ap);
-
-    nfailure = (char*) malloc(len + 1);
-
-    va_start(ap, fmt);
-    vsnprintf(nfailure, len + 1, fmt, ap);
-    va_end(ap);
+    va_list args;
 
     _mtest_t* tstruct = (_mtest_t*) self;
     ++tstruct->num_failures;
@@ -102,7 +96,65 @@ void _mtest_fail(void* self, const char* fmt, ...) {
         tstruct->failures = (char**) realloc(tstruct->failures, sizeof(char*) * tstruct->num_failures);
     }
 
-    tstruct->failures[tstruct->num_failures - 1] = nfailure;
+    va_start(args, fmt);
+    tstruct->failures[tstruct->num_failures - 1] = _print_into_buf(fmt, args);
+    va_end(args);
+}
 
+int _get_terminal_width() {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
+    return info.srWindow.Right - info.srWindow.Left + 1;
+#else
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    return w.ws_col;
+#endif
+}
+
+char* _print_into_buf(const char* fmt, va_list ap) {
+    va_list ap2;
+    int len = 0;
+    char* buf = NULL;
+
+    va_copy(ap2, ap);
+
+    len = vsnprintf(buf, len, fmt, ap);
+
+    buf = (char*) malloc(len + 1);
+
+    vsnprintf(buf, len + 1, fmt, ap2);
+    va_end(ap2);
+
+    return buf;
+}
+
+void _print_centered_header(const char* fmt, ...) {
+    va_list ap;
+    char* buf;
+
+    va_start(ap, fmt);
+    buf = _print_into_buf(fmt, ap);
     va_end(ap);
+
+    int len = strlen(buf);
+    int tsize = _get_terminal_width();
+
+    int padding = (tsize - (len + 2)) / 2;
+
+    char* pstr = (char*) malloc(padding + 1);
+    memset(pstr, '=', padding);
+    pstr[padding] = '\0';
+
+    printf("%s %s %s", pstr, buf, pstr);
+
+    if (padding * 2 + len + 2 < tsize) {
+        printf("=");
+    }
+
+    printf("\n");
+
+    free(buf);
+    free(pstr);
 }
