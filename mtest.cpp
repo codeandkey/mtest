@@ -175,7 +175,22 @@ void _print_centered_header(const char *fmt, ...) {
 void _set_color(int col) {
 #ifndef MTEST_NOCOLOR
 #ifdef _WIN32
-#error Color not implemented on WIN32!
+    HANDLE con = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    switch (col) {
+        case RED:
+            SetConsoleTextAttribute(con, FOREGROUND_RED);
+            break;
+        case GREEN:
+            SetConsoleTextAttribute(con, FOREGROUND_GREEN);
+            break;
+        case BLUE:
+            SetConsoleTextAttribute(con, FOREGROUND_BLUE);
+            break;
+        case RESET:
+            SetConsoleTextAttribute(con, FOREGROUND_WHITE);
+            break;
+    }
 #else
     switch (col) {
         case RED:
