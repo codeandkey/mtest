@@ -76,7 +76,7 @@ int mtest_main(int argc, char **argv) {
 #else
   num_threads = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
-  printf("    > Starting tests on %d threads\n", num_threads);
+  printf("    > Testing on %d threads\n", num_threads);
 
   // Initialize worker threads
   threads = (mtest_thread*) malloc(sizeof(mtest_thread) * num_threads);
