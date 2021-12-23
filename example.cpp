@@ -39,4 +39,20 @@ TEST(OkTest) {
   EXPECT(1);
 }
 
+TEST(LongTest1) {
+    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+}
+
+TEST(LongTest2) {
+    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+}
+
+TEST(LongTest3) {
+    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+}
+
+TEST(LongTest4) {
+    for (int j = 0; j < 100000000; ++j) { j += 1; j -= 1; }
+}
+
 int main(int argc, char **argv) { return mtest_main(argc, argv); }
