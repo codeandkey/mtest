@@ -175,37 +175,37 @@ void _print_centered_header(const char *fmt, ...) {
 void _set_color(int col) {
 #ifndef MTEST_NOCOLOR
 #ifdef _WIN32
-    HANDLE con = GetStdHandle(STD_OUTPUT_HANDLE);
+  HANDLE con = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    switch (col) {
-        case RED:
-            SetConsoleTextAttribute(con, FOREGROUND_RED);
-            break;
-        case GREEN:
-            SetConsoleTextAttribute(con, FOREGROUND_GREEN);
-            break;
-        case BLUE:
-            SetConsoleTextAttribute(con, FOREGROUND_BLUE);
-            break;
-        case RESET:
-            SetConsoleTextAttribute(con, FOREGROUND_WHITE);
-            break;
-    }
+  switch (col) {
+  case RED:
+    SetConsoleTextAttribute(con, FOREGROUND_RED);
+    break;
+  case GREEN:
+    SetConsoleTextAttribute(con, FOREGROUND_GREEN);
+    break;
+  case BLUE:
+    SetConsoleTextAttribute(con, FOREGROUND_BLUE);
+    break;
+  case RESET:
+    SetConsoleTextAttribute(con, FOREGROUND_WHITE);
+    break;
+  }
 #else
-    switch (col) {
-        case RED:
-            printf("\u001b[31m");
-            break;
-        case GREEN:
-            printf("\u001b[32m");
-            break;
-        case BLUE:
-            printf("\u001b[34m");
-            break;
-        case RESET:
-            printf("\u001b[0m");
-            break;
-    }
+  switch (col) {
+  case RED:
+    printf("\u001b[31m");
+    break;
+  case GREEN:
+    printf("\u001b[32m");
+    break;
+  case BLUE:
+    printf("\u001b[34m");
+    break;
+  case RESET:
+    printf("\u001b[0m");
+    break;
+  }
 #endif
 #endif
 }
