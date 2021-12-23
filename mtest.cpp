@@ -1,3 +1,5 @@
+/* vim: set ts=2 sw=2: */
+
 #include "mtest.h"
 
 #ifdef _WIN32
@@ -33,6 +35,8 @@ int mtest_main(int argc, char **argv) {
   int total_failures = 0;
   int failed_tests = 0;
 
+  clock_t tstart_time = clock();
+
   strftime(datestr, sizeof(datestr) - 1, "%m/%d/%Y %H:%H", t);
 
   _print_centered_header("TEST RUN (%d total): %s", num_tests, datestr);
@@ -61,6 +65,9 @@ int mtest_main(int argc, char **argv) {
 
     total_failures += all_tests[i]->num_failures;
   }
+
+  clock_t tend_time = clock();
+  printf("    > Finished testing in %.1f seconds\n", (float) (tend_time - tstart_time) / CLOCKS_PER_SEC);
 
   if (total_failures) {
     _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,

@@ -35,4 +35,8 @@ TEST(BasicTest) {
   EXPECT(20); // unreachable
 }
 
+TEST(OkTest) {
+  EXPECT(1);
+}
+
 int main(int argc, char **argv) { return mtest_main(argc, argv); }
