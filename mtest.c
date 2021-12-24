@@ -26,18 +26,20 @@
 #define STATUS_WAIT 250000
 
 #ifdef _WIN32
+typedef HANDLE mtest_mutex;
 typedef struct {
   HANDLE handle;
-  HANDLE mutex;
+  mtest_mutex mutex;
   int req;
 } mtest_thread;
 #else
+typedef pthread_mutex_t mtest_mutex;
 typedef struct {
   pthread_t handle;
-  pthread_mutex_t mutex;
+  mtest_mutex mutex;
   int req;
 } mtest_thread;
-static pthread_mutex_t out_mutex = PTHREAD_MUTEX_INITIALIZER;
+static mtest_mutex out_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t status_thread;
 #endif
 
@@ -58,9 +60,9 @@ static void _set_color(int col);
 static void _cleanup();
 
 static void mtest_thread_init(mtest_thread *m);
-static void mtest_lock(mtest_thread *m);
-static int mtest_trylock(mtest_thread *m);
-static void mtest_unlock(mtest_thread *m);
+static void mtest_lock(mtest_mutex *m);
+static int  mtest_trylock(mtest_mutex *m);
+static void mtest_unlock(mtest_mutex *m);
 static void mtest_join(mtest_thread *m);
 
 static void *mtest_status_main(void *ud);
@@ -113,15 +115,15 @@ int mtest_main(int argc, char **argv) {
     int assigned = 0;
     while (!assigned) {
       for (int j = 0; j < num_threads; ++j) {
-        if (mtest_trylock(&threads[j])) {
+        if (mtest_trylock(&threads[j].mutex)) {
           if (threads[j].req == -1) {
             assigned = 1;
             threads[j].req = i;
 
-            mtest_unlock(&threads[j]);
+            mtest_unlock(&threads[j].mutex);
             break;
           } else {
-            mtest_unlock(&threads[j]);
+            mtest_unlock(&threads[j].mutex);
           }
         }
       }
@@ -136,15 +138,15 @@ int mtest_main(int argc, char **argv) {
     done = 1;
 
     for (int i = 0; i < num_threads; ++i) {
-      mtest_lock(&threads[i]);
+      mtest_lock(&threads[i].mutex);
 
       if (threads[i].req != -1) {
         done = 0;
-        mtest_unlock(&threads[i]);
+        mtest_unlock(&threads[i].mutex);
         break;
       }
 
-      mtest_unlock(&threads[i]);
+      mtest_unlock(&threads[i].mutex);
     }
 
     usleep(BWAIT);
@@ -152,9 +154,9 @@ int mtest_main(int argc, char **argv) {
 
   // Tell threads to stop
   for (int i = 0; i < num_threads; ++i) {
-    mtest_lock(&threads[i]);
+    mtest_lock(&threads[i].mutex);
     threads[i].req = -2;
-    mtest_unlock(&threads[i]);
+    mtest_unlock(&threads[i].mutex);
   }
 
   // Join remaining threads
@@ -334,27 +336,27 @@ void mtest_thread_init(mtest_thread *m) {
 #endif
 }
 
-void mtest_lock(mtest_thread *m) {
+void mtest_lock(mtest_mutex *m) {
 #ifdef _WIN32
 #error W32 mutex
 #else
-  pthread_mutex_lock(&m->mutex);
+  pthread_mutex_lock(m);
 #endif
 }
 
-int mtest_trylock(mtest_thread *m) {
+int mtest_trylock(mtest_mutex *m) {
 #ifdef _WIN32
 #error W32 mutex
 #else
-  return !pthread_mutex_trylock(&m->mutex);
+  return !pthread_mutex_trylock(m);
 #endif
 }
 
-void mtest_unlock(mtest_thread *m) {
+void mtest_unlock(mtest_mutex *m) {
 #ifdef _WIN32
 #error W32 mutex
 #else
-  pthread_mutex_unlock(&m->mutex);
+  pthread_mutex_unlock(m);
 #endif
 }
 
@@ -370,9 +372,9 @@ void *mtest_thread_main(void *ud) {
   mtest_thread *self = (mtest_thread *)ud;
 
   while (1) {
-    mtest_lock(self);
+    mtest_lock(&self->mutex);
     int creq = self->req;
-    mtest_unlock(self);
+    mtest_unlock(&self->mutex);
 
     if (self->req == -2) {
       break;
@@ -389,11 +391,7 @@ void *mtest_thread_main(void *ud) {
     clock_t end_time = clock();
 
     // Acquire output mutex
-#ifdef _WIN32
-#error W32 mutex
-#else
-    pthread_mutex_lock(&out_mutex);
-#endif
+    mtest_lock(&out_mutex);
     _clear_row();
     printf("    [%lu] %*d / %d    %*s ... ", self - threads,
            1 + (int)log10(num_tests), ++total_tested, num_tests, max_testlen,
@@ -413,15 +411,11 @@ void *mtest_thread_main(void *ud) {
     printf("( %lu ms )\n", (end_time - start_time) / (CLOCKS_PER_SEC / 1000));
 
     total_failures += all_tests[creq]->num_failures;
-#ifdef _WIN32
-#error W32 mutex
-#else
-    pthread_mutex_unlock(&out_mutex);
-#endif
+    mtest_unlock(&out_mutex);
 
-    mtest_lock(self);
+    mtest_lock(&self->mutex);
     self->req = -1;
-    mtest_unlock(self);
+    mtest_unlock(&self->mutex);
   }
 
   return NULL;
@@ -431,17 +425,13 @@ void *mtest_status_main(void *ud) {
   int done = 0;
   while (!done) {
     done = 1;
-#ifdef _WIN32
-#error W32 mutex
-#else
-    pthread_mutex_lock(&out_mutex);
-#endif
+    mtest_lock(&out_mutex);
     _clear_row();
     printf("[");
     for (int i = 0; i < num_threads; ++i) {
-      mtest_lock(&threads[i]);
+      mtest_lock(&threads[i].mutex);
       int cur = threads[i].req;
-      mtest_unlock(&threads[i]);
+      mtest_unlock(&threads[i].mutex);
 
       if (cur != -2)
         done = 0;
@@ -460,11 +450,7 @@ void *mtest_status_main(void *ud) {
     }
     printf("]");
     fflush(stdout);
-#ifdef _WIN32
-#error W32 mutex
-#else
-    pthread_mutex_unlock(&out_mutex);
-#endif
+    mtest_unlock(&out_mutex);
     usleep(STATUS_WAIT);
   }
 
