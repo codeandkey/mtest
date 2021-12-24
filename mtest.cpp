@@ -103,12 +103,9 @@ int mtest_main(int argc, char **argv) {
   printf("    > Testing on %d threads\n", num_threads);
 
   // Determine name alignment
-  for (unsigned int i = 0; i < all_tests->size(); ++i) {
-    int len = strlen(all_tests->at(i).name);
-
-    if (len > max_testlen) {
-      max_testlen = len;
-    }
+  for (auto &t : *all_tests) {
+    int len = strlen(t.name);
+    if (len > max_testlen) max_testlen = len;
   }
 
   // Initialize worker threads
