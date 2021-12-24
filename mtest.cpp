@@ -4,7 +4,7 @@
 #include "mtest.h"
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #else
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <chrono>
 #include <iostream>
 #include <iomanip>
 #include <mutex>
@@ -32,8 +33,8 @@ using namespace std;
 #define BLUE 2
 #define RESET 3
 
-#define BWAIT 10000
-#define STATUS_WAIT 250000
+#define BWAIT 10
+#define STATUS_WAIT 250
 
 mutex out_mutex;
 thread* status_thread;
@@ -52,6 +53,7 @@ static char *_print_into_buf(const char *fmt, va_list args);
 static void _print_centered_header(const char *fmt, ...);
 static void _set_color(int col);
 static void _cleanup();
+static void _wait(int ms);
 
 static void mtest_status_main();
 static void mtest_thread_main(void *ud);
@@ -134,7 +136,7 @@ int mtest_main(int argc, char **argv) {
         }
       }
 
-      usleep(BWAIT);
+      _wait(BWAIT);
     }
   }
 
@@ -155,7 +157,7 @@ int mtest_main(int argc, char **argv) {
       threads[i]->mut.unlock();
     }
 
-    usleep(BWAIT);
+    _wait(BWAIT);
   }
 
   // Tell threads to stop
@@ -291,7 +293,7 @@ void _set_color(int col) {
     SetConsoleTextAttribute(con, FOREGROUND_BLUE);
     break;
   case RESET:
-    SetConsoleTextAttribute(con, FOREGROUND_WHITE);
+    SetConsoleTextAttribute(con, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
     break;
   }
 #else
@@ -324,7 +326,7 @@ void mtest_thread_main(void *ud) {
     }
 
     if (self->req == -1) {
-      usleep(BWAIT);
+      _wait(BWAIT);
       continue;
     }
 
@@ -392,7 +394,7 @@ void mtest_status_main() {
     cout << "]";
     cout.flush();
     out_mutex.unlock();
-    usleep(STATUS_WAIT);
+    _wait(STATUS_WAIT);
   }
 }
 
@@ -413,4 +415,8 @@ void _cleanup() {
   }
 
   delete status_thread;
+}
+
+void _wait(int ms) {
+  this_thread::sleep_for(chrono::milliseconds(ms));
 }
