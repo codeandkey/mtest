@@ -36,8 +36,8 @@ using namespace std;
 #define BWAIT 10
 #define STATUS_WAIT 250
 
-mutex out_mutex;
-thread* status_thread;
+static void mtest_status_main();
+static void mtest_thread_main(void *ud);
 
 struct Test {
   Test(void(*tfun)(void*), const char* name) : tfun(tfun), name(name) {}
@@ -47,28 +47,18 @@ struct Test {
   vector<stringstream> failures;
 };
 
-static int _get_terminal_width();
-static void _clear_row();
-static char *_print_into_buf(const char *fmt, va_list args);
-static void _print_centered_header(const char *fmt, ...);
-static void _set_color(int col);
-static void _cleanup();
-static void _wait(int ms);
+struct Thread
+{
+  Thread() : handle(mtest_thread_main, this), req(-1) {}
 
-static void mtest_status_main();
-static void mtest_thread_main(void *ud);
-
-struct Thread {
-  Thread() : handle(mtest_thread_main, this) {
-    req = -1;
-  }
-
-  void set_req(int val) {
+  void set_req(int val)
+  {
     lock_guard<mutex> lock(mut);
     req = val;
   }
 
-  int get_req() {
+  int get_req()
+  {
     lock_guard<mutex> lock(mut);
     return req;
   }
@@ -78,15 +68,26 @@ struct Thread {
   int req;
 };
 
+mutex out_mutex;
+thread* status_thread;
+
 static vector<Test>* all_tests;
 static vector<Thread*> threads;
-static int num_threads;
 static int total_failures;
 static int total_tested;
 static int failed_tests;
 static int max_testlen;
 
-int mtest_main(int argc, char **argv) {
+static int _get_terminal_width();
+static void _clear_row();
+static char *_print_into_buf(const char *fmt, va_list args);
+static void _print_centered_header(const char *fmt, ...);
+static void _set_color(int col);
+static void _cleanup();
+static void _wait(int ms);
+
+int mtest_main(int argc, char **argv)
+{
   char datestr[100];
   time_t now = time(NULL);
   struct tm *t = localtime(&now);
@@ -97,6 +98,7 @@ int mtest_main(int argc, char **argv) {
 
   _print_centered_header("TEST RUN (%d total): %s", all_tests->size(), datestr);
 
+  int num_threads;
 #ifdef _WIN32
   SYSTEM_INFO info;
   GetSystemInfo(&info);
@@ -107,7 +109,8 @@ int mtest_main(int argc, char **argv) {
   cout << "    > Testing on " << num_threads << " threads" << endl;
 
   // Determine name alignment
-  for (auto &t : *all_tests) {
+  for (auto &t : *all_tests)
+  {
     int len = strlen(t.name);
     if (len > max_testlen) max_testlen = len;
   }
@@ -119,22 +122,27 @@ int mtest_main(int argc, char **argv) {
   // Initialize status thread
   status_thread = new thread(&mtest_status_main);
 
-  for (unsigned int i = 0; i < all_tests->size(); ++i) {
+  for (unsigned int i = 0; i < all_tests->size(); ++i)
+  {
     // Wait for free worker
     int assigned = 0;
-    while (!assigned) {
-      for (int j = 0; j < num_threads; ++j) {
-        if (threads[j]->mut.try_lock()) {
-          if (threads[j]->req == -1) {
+    while (!assigned)
+    {
+      for (auto& thr : threads)
+        if (thr->mut.try_lock())
+        {
+          if (thr->req == -1)
+          {
             assigned = 1;
-            threads[j]->req = i;
-            threads[j]->mut.unlock();
+            thr->req = i;
+            thr->mut.unlock();
             break;
-          } else {
-            threads[j]->mut.unlock();
+          }
+          else
+          {
+            thr->mut.unlock();
           }
         }
-      }
 
       _wait(BWAIT);
     }
@@ -142,33 +150,34 @@ int mtest_main(int argc, char **argv) {
 
   // Wait for each thread to complete
   int done = 0;
-  while (!done) {
+  while (!done)
+  {
     done = 1;
 
-    for (int i = 0; i < num_threads; ++i) {
-      threads[i]->mut.lock();
+    for (auto &thr : threads)
+    {
+      thr->mut.lock();
 
-      if (threads[i]->req != -1) {
+      if (thr->req != -1)
+      {
         done = 0;
-        threads[i]->mut.unlock();
+        thr->mut.unlock();
         break;
       }
 
-      threads[i]->mut.unlock();
+      thr->mut.unlock();
     }
 
     _wait(BWAIT);
   }
 
   // Tell threads to stop
-  for (int i = 0; i < num_threads; ++i) {
-    threads[i]->set_req(-2);
-  }
+  for (auto &thr : threads)
+    thr->set_req(-2);
 
   // Join remaining threads
-  for (int i = 0; i < num_threads; ++i) {
-    threads[i]->handle.join();
-  }
+  for (auto &thr : threads)
+    thr->handle.join();
 
   // Wait for status thread
   status_thread->join();
@@ -182,20 +191,22 @@ int mtest_main(int argc, char **argv) {
     << (float)(tend_time - tstart_time) / CLOCKS_PER_SEC
     << " seconds" << endl;
 
-  if (total_failures) {
+  if (total_failures)
+  {
     _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,
                            (failed_tests > 1) ? "S" : "");
 
-    for (unsigned int i = 0; i < all_tests->size(); ++i) {
-      if (all_tests->at(i).failures.size()) {
-        printf("%s:\n", all_tests->at(i).name);
+    for (auto &test : *all_tests)
+      if (test.failures.size())
+      {
+        cout << test.name << ":" << endl;
 
-        for (auto &f : all_tests->at(i).failures) {
+        for (auto &f : test.failures)
           cout << "    " << f.str() << endl;
-        }
       }
-    }
-  } else {
+  }
+  else
+  {
     _print_centered_header("ALL TESTS PASSED");
   }
 
@@ -203,23 +214,25 @@ int mtest_main(int argc, char **argv) {
   return total_failures ? -1 : 0;
 }
 
-int _mtest_push(const char* name, void (*tfun)(void*)) {
-  if (!all_tests) {
+int _mtest_push(const char* name, void (*tfun)(void*))
+{
+  if (!all_tests)
     all_tests = new vector<Test>();
-  }
 
   all_tests->push_back(Test(tfun, name));
 
   return all_tests->size();
 }
 
-std::ostream& _mtest_fail(void *self) {
+std::ostream& _mtest_fail(void *self)
+{
   Test *tstruct = (Test *)self;
   tstruct->failures.push_back(stringstream());
   return tstruct->failures.back();
 }
 
-int _get_terminal_width() {
+int _get_terminal_width()
+{
 #ifdef _WIN32
   CONSOLE_SCREEN_BUFFER_INFO info;
   GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
@@ -231,7 +244,8 @@ int _get_terminal_width() {
 #endif
 }
 
-char *_print_into_buf(const char *fmt, va_list ap) {
+char *_print_into_buf(const char *fmt, va_list ap)
+{
   va_list ap2;
   int len = 0;
   char *buf = NULL;
@@ -248,17 +262,16 @@ char *_print_into_buf(const char *fmt, va_list ap) {
   return buf;
 }
 
-void _print_centered_header(const char *fmt, ...) {
+void _print_centered_header(const char *fmt, ...)
+{
   va_list ap;
-  char *buf;
 
   va_start(ap, fmt);
-  buf = _print_into_buf(fmt, ap);
+  char* buf = _print_into_buf(fmt, ap);
   va_end(ap);
 
   int len = strlen(buf);
   int tsize = _get_terminal_width();
-
   int padding = (tsize - (len + 2)) / 2;
 
   char *pstr = (char *)malloc(padding + 1);
@@ -267,9 +280,8 @@ void _print_centered_header(const char *fmt, ...) {
 
   printf("%s %s %s", pstr, buf, pstr);
 
-  if (padding * 2 + len + 2 < tsize) {
+  if (padding * 2 + len + 2 < tsize)
     printf("=");
-  }
 
   printf("\n");
 
@@ -277,12 +289,14 @@ void _print_centered_header(const char *fmt, ...) {
   free(pstr);
 }
 
-void _set_color(int col) {
+void _set_color(int col)
+{
 #ifndef MTEST_NOCOLOR
 #ifdef _WIN32
   HANDLE con = GetStdHandle(STD_OUTPUT_HANDLE);
 
-  switch (col) {
+  switch (col)
+  {
   case RED:
     SetConsoleTextAttribute(con, FOREGROUND_RED);
     break;
@@ -297,7 +311,8 @@ void _set_color(int col) {
     break;
   }
 #else
-  switch (col) {
+  switch (col)
+  {
   case RED:
     printf("\e[31m");
     break;
@@ -315,17 +330,19 @@ void _set_color(int col) {
 #endif
 }
 
-void mtest_thread_main(void *ud) {
+void mtest_thread_main(void *ud)
+{
   Thread* self = (Thread*) ud;
 
-  while (1) {
+  while (1)
+  {
     int creq = self->get_req();
 
-    if (self->req == -2) {
+    if (self->req == -2)
       break;
-    }
 
-    if (self->req == -1) {
+    if (self->req == -1)
+    {
       _wait(BWAIT);
       continue;
     }
@@ -345,7 +362,8 @@ void mtest_thread_main(void *ud) {
       << "    " << setw(max_testlen) << all_tests->at(creq).name
       << " ... ";
 
-    if (all_tests->at(creq).failures.size()) {
+    if (all_tests->at(creq).failures.size())
+    {
       _set_color(RED);
       cout << "FAILED ";
       _set_color(RESET);
@@ -368,29 +386,31 @@ void mtest_thread_main(void *ud) {
 
 void mtest_status_main() {
   int done = 0;
-  while (!done) {
+  while (!done)
+  {
     done = 1;
     out_mutex.lock();
     _clear_row();
     cout << "[";
-    for (int i = 0; i < num_threads; ++i) {
-      int cur = threads[i]->get_req();
+
+    for (auto &thr : threads)
+    {
+      int cur = thr->get_req();
 
       if (cur != -2)
         done = 0;
 
-      if (cur == -2) {
+      if (cur == -2)
         cout << "(joining)";
-      } else if (cur == -1) {
+      else if (cur == -1)
         cout << "(idle)";
-      } else {
+      else
         cout << all_tests->at(cur).name;
-      }
 
-      if (i < num_threads - 1) {
+      if (thr != threads.back())
         cout << ", ";
-      }
     }
+
     cout << "]";
     cout.flush();
     out_mutex.unlock();
@@ -398,7 +418,8 @@ void mtest_status_main() {
   }
 }
 
-void _clear_row() {
+void _clear_row()
+{
   int width = _get_terminal_width();
   char *clr = (char *)malloc(width + 1);
   memset(clr, ' ', width);
@@ -407,16 +428,17 @@ void _clear_row() {
   free(clr);
 }
 
-void _cleanup() {
+void _cleanup()
+{
   free(all_tests);
 
-  for (auto& t : threads) {
+  for (auto& t : threads)
     delete t;
-  }
 
   delete status_thread;
 }
 
-void _wait(int ms) {
+void _wait(int ms)
+{
   this_thread::sleep_for(chrono::milliseconds(ms));
 }
