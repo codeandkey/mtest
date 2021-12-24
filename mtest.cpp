@@ -11,6 +11,8 @@
 #include <unistd.h>
 #endif
 
+#include <stdarg.h>
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -219,16 +221,10 @@ int _mtest_push(const char* name, void (*tfun)(void*)) {
   return all_tests->size();
 }
 
-void _mtest_fail(void *self, const char *fmt, ...) {
-  va_list args;
-
+std::ostream& _mtest_fail(void *self) {
   Test *tstruct = (Test *)self;
-
   tstruct->failures.push_back(stringstream());
-
-  va_start(args, fmt);
-  tstruct->failures.back() << _print_into_buf(fmt, args);
-  va_end(args);
+  return tstruct->failures.back();
 }
 
 int _get_terminal_width() {

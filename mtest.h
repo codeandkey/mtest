@@ -4,8 +4,7 @@
 #ifndef MTEST_H
 #define MTEST_H
 
-#include <stdarg.h>
-
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -41,8 +40,9 @@
 #define EXPECT(cond)                                                           \
   {                                                                            \
     if (!(cond)) {                                                             \
-      _mtest_fail(__self, "[" __FILE__ ":" MT_STRINGIFY(                       \
-                              __LINE__) "] failed expectation \"" #cond "\""); \
+      _mtest_fail(__self)                                                      \
+        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
+        << "failed expectation \"" << #cond << "\"";                           \
     }                                                                          \
   }
 
@@ -50,16 +50,15 @@
  * Tests that a condition is true. If the condition does not evaluate to a
  * nonzero value, the test is considered failed and this macro is reported.
  * The test will terminate immediately if this condition fails.
- * 
+ *
  * @param cond Condition to test.
  */
 #define ASSERT(cond)                                                           \
   {                                                                            \
     if (!(cond)) {                                                             \
-      _mtest_fail(__self,                                                      \
-                  "[" __FILE__                                                 \
-                  ":" MT_STRINGIFY(__LINE__) "] failed assertion \"" #cond     \
-                                          "\", aborting test");                \
+      _mtest_fail(__self)                                                      \
+        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
+        << "failed assertion \"" << #cond << "\", aborting test";              \
       return;                                                                  \
     }                                                                          \
   }
@@ -75,6 +74,6 @@
 int mtest_main(int argc, char **argv);
 
 int _mtest_push(const char* name, void(*tfun)(void*));
-void _mtest_fail(void *self, const char *fmt, ...);
+std::ostream& _mtest_fail(void *self);
 
 #endif
