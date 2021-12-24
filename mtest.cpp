@@ -357,7 +357,7 @@ void mtest_thread_main(void *ud)
     _clear_row();
 
     cout
-      << "    " << setw((int)log10(all_tests->size())) << ++total_tested
+      << "    " << setw((int)log10(all_tests->size()) + 1) << ++total_tested
       << " / " << all_tests->size()
       << "    " << setw(max_testlen) << all_tests->at(creq).name
       << " ... ";
