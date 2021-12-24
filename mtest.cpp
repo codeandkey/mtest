@@ -20,6 +20,7 @@
 #include <time.h>
 
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 
 using namespace std;
@@ -62,8 +63,8 @@ static vector<Test>* all_tests;
 static mtest_thread *threads;
 static int num_threads;
 static int total_failures;
-static int failed_tests;
 static int total_tested;
+static int failed_tests;
 static int max_testlen;
 
 static int _get_terminal_width();
@@ -100,7 +101,7 @@ int mtest_main(int argc, char **argv) {
 #else
   num_threads = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
-  printf("    > Testing on %d threads\n", num_threads);
+  cout << "    > Testing on " << num_threads << " threads" << endl;
 
   // Determine name alignment
   for (auto &t : *all_tests) {
@@ -184,8 +185,12 @@ int mtest_main(int argc, char **argv) {
 
   clock_t tend_time = clock();
   _clear_row();
-  printf("    > Finished testing in %.1f seconds\n",
-         (float)(tend_time - tstart_time) / CLOCKS_PER_SEC);
+
+  cout 
+    << "    > Finished testing in "
+    << setprecision(2)
+    << (float)(tend_time - tstart_time) / CLOCKS_PER_SEC
+    << " seconds" << endl;
 
   if (total_failures) {
     _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,
@@ -388,22 +393,26 @@ void *mtest_thread_main(void *ud) {
     // Acquire output mutex
     mtest_lock(&out_mutex);
     _clear_row();
-    printf("    [%lu] %*d / %lu    %*s ... ", self - threads,
-           1 + (int)log10(all_tests->size()), ++total_tested, all_tests->size(), max_testlen,
-           all_tests->at(creq).name);
+    cout
+      << "    [" << self-threads << "]"
+      << " " << setw((int)log10(all_tests->size())) << ++total_tested
+      << " / " << all_tests->size()
+      << "    " << setw(max_testlen) << all_tests->at(creq).name
+      << " ... ";
+
     if (all_tests->at(creq).failures.size()) {
       _set_color(RED);
-      printf("FAILED ");
+      cout << "FAILED ";
       _set_color(RESET);
 
       ++failed_tests;
     } else {
       _set_color(GREEN);
-      printf("OK     ");
+      cout << "OK     ";
       _set_color(RESET);
     }
 
-    printf("( %lu ms )\n", (end_time - start_time) / (CLOCKS_PER_SEC / 1000));
+    cout << "( " << (end_time - start_time) / (CLOCKS_PER_SEC / 1000) << " ms )" << endl;
 
     total_failures += all_tests->at(creq).failures.size();
     mtest_unlock(&out_mutex);
@@ -422,7 +431,7 @@ void *mtest_status_main(void *ud) {
     done = 1;
     mtest_lock(&out_mutex);
     _clear_row();
-    printf("[");
+    cout << "[";
     for (int i = 0; i < num_threads; ++i) {
       mtest_lock(&threads[i].mutex);
       int cur = threads[i].req;
@@ -432,19 +441,19 @@ void *mtest_status_main(void *ud) {
         done = 0;
 
       if (cur == -2) {
-        printf("(joining)");
+        cout << "(joining)";
       } else if (cur == -1) {
-        printf("(idle)");
+        cout << "(idle)";
       } else {
-        printf("%s", all_tests->at(cur).name);
+        cout << all_tests->at(cur).name;
       }
 
       if (i < num_threads - 1) {
-        printf(", ");
+        cout << ", ";
       }
     }
-    printf("]");
-    fflush(stdout);
+    cout << "]";
+    cout.flush();
     mtest_unlock(&out_mutex);
     usleep(STATUS_WAIT);
   }
