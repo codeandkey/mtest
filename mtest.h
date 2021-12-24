@@ -6,12 +6,8 @@
 
 #include <stdarg.h>
 
-typedef struct {
-  void (*testfun)(void *self);
-  const char *tname;
-  char **failures;
-  int num_failures;
-} _mtest_t;
+#include <string>
+#include <vector>
 
 #define MT_STRINGIFY2(x) #x
 #define MT_STRINGIFY(x) MT_STRINGIFY2(x)
@@ -31,12 +27,8 @@ typedef struct {
  * @param name Test name token.
  */
 #define TEST(name)                                                             \
-  void _test_##name(void *s);                                                  \
-  static _mtest_t _test_s##name = {.testfun = _test_##name,                    \
-                                   .tname = #name,                             \
-                                   .failures = (char **)0,                     \
-                                   .num_failures = 0};                         \
-  static int _test_add_##name = _mtest_add(&_test_s##name);                    \
+  static void _test_##name(void *s);                                           \
+  static int _test_add_##name = _mtest_push(#name, &_test_##name);             \
   void _test_##name(void *__self)
 
 /**
@@ -82,7 +74,7 @@ typedef struct {
  */
 int mtest_main(int argc, char **argv);
 
-int _mtest_add(_mtest_t *tstruct);
+int _mtest_push(const char* name, void(*tfun)(void*));
 void _mtest_fail(void *self, const char *fmt, ...);
 
 #endif

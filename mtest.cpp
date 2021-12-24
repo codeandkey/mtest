@@ -17,6 +17,11 @@
 #include <string.h>
 #include <time.h>
 
+#include <iostream>
+#include <sstream>
+
+using namespace std;
+
 #define RED 0
 #define GREEN 1
 #define BLUE 2
@@ -43,8 +48,15 @@ static mtest_mutex out_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t status_thread;
 #endif
 
-static _mtest_t **all_tests;
-static int num_tests;
+struct Test {
+  Test(void(*tfun)(void*), const char* name) : tfun(tfun), name(name) {}
+
+  void (*tfun)(void*);
+  const char* name;
+  vector<stringstream> failures;
+};
+
+static vector<Test>* all_tests;
 static mtest_thread *threads;
 static int num_threads;
 static int total_failures;
@@ -77,7 +89,7 @@ int mtest_main(int argc, char **argv) {
 
   strftime(datestr, sizeof(datestr) - 1, "%m/%d/%Y %H:%H", t);
 
-  _print_centered_header("TEST RUN (%d total): %s", num_tests, datestr);
+  _print_centered_header("TEST RUN (%d total): %s", all_tests->size(), datestr);
 
 #ifdef _WIN32
   SYSTEM_INFO info;
@@ -89,8 +101,8 @@ int mtest_main(int argc, char **argv) {
   printf("    > Testing on %d threads\n", num_threads);
 
   // Determine name alignment
-  for (int i = 0; i < num_tests; ++i) {
-    int len = strlen(all_tests[i]->tname);
+  for (unsigned int i = 0; i < all_tests->size(); ++i) {
+    int len = strlen(all_tests->at(i).name);
 
     if (len > max_testlen) {
       max_testlen = len;
@@ -110,7 +122,7 @@ int mtest_main(int argc, char **argv) {
   pthread_create(&status_thread, NULL, mtest_status_main, NULL);
 #endif
 
-  for (int i = 0; i < num_tests; ++i) {
+  for (unsigned int i = 0; i < all_tests->size(); ++i) {
     // Wait for free worker
     int assigned = 0;
     while (!assigned) {
@@ -180,12 +192,12 @@ int mtest_main(int argc, char **argv) {
     _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,
                            (failed_tests > 1) ? "S" : "");
 
-    for (int i = 0; i < num_tests; ++i) {
-      if (all_tests[i]->num_failures) {
-        printf("%s:\n", all_tests[i]->tname);
+    for (unsigned int i = 0; i < all_tests->size(); ++i) {
+      if (all_tests->at(i).failures.size()) {
+        printf("%s:\n", all_tests->at(i).name);
 
-        for (int j = 0; j < all_tests[i]->num_failures; ++j) {
-          printf("    %s\n", all_tests[i]->failures[j]);
+        for (auto &f : all_tests->at(i).failures) {
+          cout << "    " << f.str() << endl;
         }
       }
     }
@@ -197,35 +209,25 @@ int mtest_main(int argc, char **argv) {
   return total_failures ? -1 : 0;
 }
 
-int _mtest_add(_mtest_t *tstruct) {
-  ++num_tests;
-
+int _mtest_push(const char* name, void (*tfun)(void*)) {
   if (!all_tests) {
-    all_tests = (_mtest_t **)malloc(sizeof(*all_tests));
-  } else {
-    all_tests = (_mtest_t **)realloc(all_tests, sizeof(*all_tests) * num_tests);
+    all_tests = new vector<Test>();
   }
 
-  all_tests[num_tests - 1] = tstruct;
+  all_tests->push_back(Test(tfun, name));
 
-  return num_tests;
+  return all_tests->size();
 }
 
 void _mtest_fail(void *self, const char *fmt, ...) {
   va_list args;
 
-  _mtest_t *tstruct = (_mtest_t *)self;
-  ++tstruct->num_failures;
+  Test *tstruct = (Test *)self;
 
-  if (!tstruct->failures) {
-    tstruct->failures = (char **)malloc(sizeof(char *));
-  } else {
-    tstruct->failures = (char **)realloc(
-        tstruct->failures, sizeof(char *) * tstruct->num_failures);
-  }
+  tstruct->failures.push_back(stringstream());
 
   va_start(args, fmt);
-  tstruct->failures[tstruct->num_failures - 1] = _print_into_buf(fmt, args);
+  tstruct->failures.back() << _print_into_buf(fmt, args);
   va_end(args);
 }
 
@@ -387,16 +389,16 @@ void *mtest_thread_main(void *ud) {
 
     // Run test!
     clock_t start_time = clock();
-    all_tests[creq]->testfun(all_tests[creq]);
+    all_tests->at(creq).tfun(&all_tests->at(creq));
     clock_t end_time = clock();
 
     // Acquire output mutex
     mtest_lock(&out_mutex);
     _clear_row();
-    printf("    [%lu] %*d / %d    %*s ... ", self - threads,
-           1 + (int)log10(num_tests), ++total_tested, num_tests, max_testlen,
-           all_tests[creq]->tname);
-    if (all_tests[creq]->num_failures) {
+    printf("    [%lu] %*d / %lu    %*s ... ", self - threads,
+           1 + (int)log10(all_tests->size()), ++total_tested, all_tests->size(), max_testlen,
+           all_tests->at(creq).name);
+    if (all_tests->at(creq).failures.size()) {
       _set_color(RED);
       printf("FAILED ");
       _set_color(RESET);
@@ -410,7 +412,7 @@ void *mtest_thread_main(void *ud) {
 
     printf("( %lu ms )\n", (end_time - start_time) / (CLOCKS_PER_SEC / 1000));
 
-    total_failures += all_tests[creq]->num_failures;
+    total_failures += all_tests->at(creq).failures.size();
     mtest_unlock(&out_mutex);
 
     mtest_lock(&self->mutex);
@@ -441,7 +443,7 @@ void *mtest_status_main(void *ud) {
       } else if (cur == -1) {
         printf("(idle)");
       } else {
-        printf("%s", all_tests[cur]->tname);
+        printf("%s", all_tests->at(cur).name);
       }
 
       if (i < num_threads - 1) {
@@ -467,14 +469,6 @@ void _clear_row() {
 }
 
 void _cleanup() {
-  for (int i = 0; i < num_tests; ++i) {
-    for (int j = 0; j < all_tests[i]->num_failures; ++j) {
-      free(all_tests[i]->failures[j]);
-    }
-
-    free(all_tests[i]->failures);
-  }
-
   free(all_tests);
   free(threads);
 }
