@@ -5,12 +5,12 @@
 </p>
 
 ## About
-mtest is a minimal testing framework for C/C++.
+mtest is a minimal testing framework for C++.
 
 ## Requirements
 - Windows or UNIX-like host
 - pthreads (UNIX only)
-- A compiler supporting ANSI C99
+- A compiler supporting C++11
 
 ## Usage
-To include mtest into your project, download [mtest.h](https://raw.githubusercontent.com/codeandkey/mtest/master/mtest.h), [mtest.c](https://raw.githubusercontent.com/codeandkey/mtest/master/mtest.c) and place them alongside your source files. You may need to rename `mtest.c` to `mtest.cpp` in C++ projects. See [example.c](https://github.com/codeandkey/mtest/blob/master/example.c) to see how to add and run tests.
+To include mtest into your project, download [mtest.h](https://raw.githubusercontent.com/codeandkey/mtest/master/mtest.h), [mtest.cpp](https://raw.githubusercontent.com/codeandkey/mtest/master/mtest.cpp) and place them alongside your source files. See [example.cpp](https://github.com/codeandkey/mtest/blob/master/example.cpp) to see how to add and run tests.
