@@ -9,7 +9,6 @@ mtest is a minimal testing framework for C++.
 
 ## Requirements
 - Windows or UNIX-like host
-- pthreads (UNIX only)
 - A compiler supporting C++11
 
 ## Usage
