@@ -114,7 +114,7 @@ int mtest_main(int argc, char **argv)
     errno = 0;
     num_threads = strtol(env_threads, NULL, 10);
 
-    if (errno) {
+    if (errno || num_threads <= 0) {
       cout << "ERROR: invalid thread count in MTEST_THREADS" << endl;
       return -1;
     }
@@ -134,15 +134,15 @@ int mtest_main(int argc, char **argv)
 
       if (i >= argc)
       {
-        cout << "ERROR: --test-threads requires an argument" << endl;
+        cout << "ERROR: --mtest-threads requires an argument" << endl;
         return -1;
       }
 
       errno = 0;
       num_threads = strtol(argv[i], NULL, 10);
 
-      if (errno) {
-        cout << "ERROR: invalid thread count in MTEST_THREADS" << endl;
+      if (errno || num_threads <= 0) {
+        cout << "ERROR: invalid thread count to --mtest-threads" << endl;
         return -1;
       }
     }
