@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <cerrno>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
@@ -97,8 +98,6 @@ int mtest_main(int argc, char **argv)
 
   strftime(datestr, sizeof(datestr) - 1, "%m/%d/%Y %H:%H", t);
 
-  _print_centered_header("TEST RUN (%d total): %s", all_tests->size(), datestr);
-
   int num_threads = (int) thread::hardware_concurrency();
 
   if (!num_threads)
@@ -106,6 +105,50 @@ int mtest_main(int argc, char **argv)
     cout << "ERROR: couldn't query thread count" << endl;
     return -1;
   }
+
+  // Check environment vars
+  char* env_threads = getenv("MTEST_THREADS"); 
+
+  if (env_threads && strlen(env_threads))
+  {
+    errno = 0;
+    num_threads = strtol(env_threads, NULL, 10);
+
+    if (errno) {
+      cout << "ERROR: invalid thread count in MTEST_THREADS" << endl;
+      return -1;
+    }
+  }
+
+  // Parse arguments
+  for (int i = 0; i < argc; ++i)
+  {
+    if (string(argv[i]) == "--mtest-help") {
+      cout << "TEST OPTIONS:" << endl;
+      cout << "    --mtest-help          | Displays this message." << endl;
+      cout << "    --mtest-threads <num> | Sets the number of parallel tests." << endl;
+      return 0;
+    } else if (string(argv[i]) == "--mtest-threads")
+    {
+      i += 1;
+
+      if (i >= argc)
+      {
+        cout << "ERROR: --test-threads requires an argument" << endl;
+        return -1;
+      }
+
+      errno = 0;
+      num_threads = strtol(argv[i], NULL, 10);
+
+      if (errno) {
+        cout << "ERROR: invalid thread count in MTEST_THREADS" << endl;
+        return -1;
+      }
+    }
+  }
+
+  _print_centered_header("TEST RUN (%d total): %s", all_tests->size(), datestr);
   cout << "    > Testing on " << num_threads << " threads" << endl;
 
   // Determine name alignment
