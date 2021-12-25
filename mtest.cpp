@@ -98,14 +98,13 @@ int mtest_main(int argc, char **argv)
 
   _print_centered_header("TEST RUN (%d total): %s", all_tests->size(), datestr);
 
-  int num_threads;
-#ifdef _WIN32
-  SYSTEM_INFO info;
-  GetSystemInfo(&info);
-  num_threads = info.dwNumberOfProcessors;
-#else
-  num_threads = sysconf(_SC_NPROCESSORS_ONLN);
-#endif
+  int num_threads = (int) thread::hardware_concurrency();
+
+  if (!num_threads)
+  {
+    cout << "ERROR: couldn't query thread count" << endl;
+    return -1;
+  }
   cout << "    > Testing on " << num_threads << " threads" << endl;
 
   // Determine name alignment
