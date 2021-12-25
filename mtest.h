@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: MIT
 // vim: set ts=2 sw=2:
 
+/*
+ * =================================================================
+ * This file is a part of mtest - a minimal C++ testing framework.
+ * The project is available at https://github.com/codeandkey/mtest
+ * =================================================================
+ */
+
 #ifndef MTEST_H
 #define MTEST_H
 
 #include <iostream>
-#include <string>
-#include <vector>
 
 #define MT_STRINGIFY2(x) #x
 #define MT_STRINGIFY(x) MT_STRINGIFY2(x)

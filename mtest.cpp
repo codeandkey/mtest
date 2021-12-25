@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT
 // vim: set ts=2 sw=2:
 
+/*
+ * =================================================================
+ * This file is a part of mtest - a minimal C++ testing framework.
+ * The project is available at https://github.com/codeandkey/mtest
+ * =================================================================
+ */
+
 #include "mtest.h"
 
 #ifdef _WIN32
@@ -25,7 +32,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
-#include <functional>
+#include <vector>
 
 using namespace std;
 
