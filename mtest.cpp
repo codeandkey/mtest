@@ -430,7 +430,7 @@ void _clear_row()
 
 void _cleanup()
 {
-  free(all_tests);
+  delete all_tests;
 
   for (auto& t : threads)
     delete t;
