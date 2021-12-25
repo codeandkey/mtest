@@ -47,106 +47,29 @@
   }
 
 /**
- * Tests that two values are equal.
+ * Tests that a binary operator between two values returns true.
  * The test will continue on regardless if this condition passes or fails.
  * 
- * @param a Left-hand value.
- * @param b Right-hand value.
+ * @param lhs Left-hand value.
+ * @param op  Operator.
+ * @param rhs Right-hand value.
  */
-#define EXPECT_EQ(a, b)                                                        \
+#define EXPECT_OP(lhs, op, rhs)                                                \
   {                                                                            \
-    if (!((a) == (b))) {                                                       \
+    if (!((lhs) op (rhs))) {                                                   \
       _mtest_fail(__self)                                                      \
         << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed expectation \"" << #a << " == " << #b << "\": "             \
-        << "\"" << a << "\" !== \"" << b << "\"";                              \
+        << "failed expectation \"" << #lhs << " " << #op << " " << #rhs        \
+        << "\": \"" << lhs << "\" !" #op << " \"" << rhs << "\"";              \
     }                                                                          \
   }
 
-/**
- * Tests that two values are not equal.
- * The test will continue on regardless if this condition passes or fails.
- * 
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define EXPECT_NE(a, b)                                                        \
-  {                                                                            \
-    if (!((a) != (b))) {                                                       \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed expectation \"" << #a << " != " << #b << "\": "             \
-        << "\"" << a << "\" !!= \"" << b << "\"";                              \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is less than the right-hand.
- * The test will continue on regardless if this condition passes or fails.
- * 
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define EXPECT_LT(a, b)                                                        \
-  {                                                                            \
-    if (!((a) < (b))) {                                                        \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed expectation \"" << #a << " < " << #b << "\": "              \
-        << "\"" << a << "\" !< \"" << b << "\"";                               \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is greater than the right-hand.
- * The test will continue on regardless if this condition passes or fails.
- * 
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define EXPECT_GT(a, b)                                                        \
-  {                                                                            \
-    if (!((a) > (b))) {                                                        \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed expectation \"" << #a << " > " << #b << "\": "              \
-        << "\"" << a << "\" !> \"" << b << "\"";                               \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is less than or equal to the right-hand.
- * The test will continue on regardless if this condition passes or fails.
- * 
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define EXPECT_LE(a, b)                                                        \
-  {                                                                            \
-    if (!((a) <= (b))) {                                                       \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed expectation \"" << #a << " <= " << #b << "\": "             \
-        << "\"" << a << "\" !<= \"" << b << "\"";                              \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is greater than or equal to the right-hand.
- * The test will continue on regardless if this condition passes or fails.
- * 
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define EXPECT_GE(a, b)                                                        \
-  {                                                                            \
-    if (!((a) >= (b))) {                                                       \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed expectation \"" << #a << " >= " << #b << "\": "             \
-        << "\"" << a << "\" !>= \"" << b << "\"";                              \
-    }                                                                          \
-  }
+#define EXPECT_EQ(lhs, rhs) EXPECT_OP(lhs, ==, rhs)
+#define EXPECT_NE(lhs, rhs) EXPECT_OP(lhs, ==, rhs)
+#define EXPECT_LT(lhs, rhs) EXPECT_OP(lhs, <, rhs)
+#define EXPECT_LE(lhs, rhs) EXPECT_OP(lhs, <=, rhs)
+#define EXPECT_GT(lhs, rhs) EXPECT_OP(lhs, >, rhs)
+#define EXPECT_GE(lhs, rhs) EXPECT_OP(lhs, >=, rhs)
 
 /**
  * Tests that a condition is true. If the condition does not evaluate to a
@@ -166,112 +89,31 @@
   }
 
 /**
- * Tests that two values are equal.
+ * Tests that a binary operator between two values returns true.
  * The test will terminate immediately if this condition fails.
- *
- * @param a Left-hand value.
- * @param b Right-hand value.
+ * 
+ * @param lhs Left-hand value.
+ * @param op  Operator.
+ * @param rhs Right-hand value.
  */
-#define ASSERT_EQ(a, b)                                                        \
+#define ASSERT_OP(lhs, op, rhs)                                                \
   {                                                                            \
-    if (!((a) == (b))) {                                                       \
+    if (!((lhs) op (rhs))) {                                                   \
       _mtest_fail(__self)                                                      \
         << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed assertion \"" << #a << " == " << #b << "\": "               \
-        << "\"" << a << "\" !== \"" << b << "\", aborting test";               \
+        << "failed assertion \"" << #lhs << " " << #op << " " << #rhs          \
+        << "\": \"" << lhs << "\" !" #op << " \"" << rhs << "\", "             \
+        << "aborting test";                                                    \
       return;                                                                  \
     }                                                                          \
   }
 
-/**
- * Tests that two values are not equal.
- * The test will terminate immediately if this condition fails.
- *
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define ASSERT_NE(a, b)                                                        \
-  {                                                                            \
-    if (!((a) != (b))) {                                                       \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed assertion \"" << #a << " != " << #b << "\": "               \
-        << "\"" << a << "\" !!= \"" << b << "\", aborting test";               \
-      return;                                                                  \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is less than the right-hand value.
- * The test will terminate immediately if this condition fails.
- *
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define ASSERT_LT(a, b)                                                        \
-  {                                                                            \
-    if (!((a) < (b))) {                                                        \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed assertion \"" << #a << " < " << #b << "\": "                \
-        << "\"" << a << "\" !< \"" << b << "\", aborting test";                \
-      return;                                                                  \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is greater than the right-hand value.
- * The test will terminate immediately if this condition fails.
- *
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define ASSERT_GT(a, b)                                                        \
-  {                                                                            \
-    if (!((a) > (b))) {                                                        \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed assertion \"" << #a << " > " << #b << "\": "                \
-        << "\"" << a << "\" !> \"" << b << "\", aborting test";                \
-      return;                                                                  \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is less than or equal to the right-hand value.
- * The test will terminate immediately if this condition fails.
- *
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define ASSERT_LE(a, b)                                                        \
-  {                                                                            \
-    if (!((a) <= (b))) {                                                       \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed assertion \"" << #a << " <= " << #b << "\": "               \
-        << "\"" << a << "\" !<= \"" << b << "\", aborting test";               \
-      return;                                                                  \
-    }                                                                          \
-  }
-
-/**
- * Tests that the left-hand value is greater than or equal to the right-hand
- * value. The test will terminate immediately if this condition fails.
- *
- * @param a Left-hand value.
- * @param b Right-hand value.
- */
-#define ASSERT_GE(a, b)                                                        \
-  {                                                                            \
-    if (!((a) >= (b))) {                                                       \
-      _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
-        << "failed assertion \"" << #a << " >= " << #b << "\": "               \
-        << "\"" << a << "\" !>= \"" << b << "\", aborting test";               \
-      return;                                                                  \
-    }                                                                          \
-  }
+#define ASSERT_EQ(lhs, rhs) ASSERT_OP(lhs, ==, rhs)
+#define ASSERT_NE(lhs, rhs) ASSERT_OP(lhs, ==, rhs)
+#define ASSERT_LT(lhs, rhs) ASSERT_OP(lhs, <, rhs)
+#define ASSERT_LE(lhs, rhs) ASSERT_OP(lhs, <=, rhs)
+#define ASSERT_GT(lhs, rhs) ASSERT_OP(lhs, >, rhs)
+#define ASSERT_GE(lhs, rhs) ASSERT_OP(lhs, >=, rhs)
 
 /**
  * Runs all tests registered with TEST(). Returns 0 if all tests pass,
