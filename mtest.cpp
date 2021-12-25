@@ -39,7 +39,8 @@ using namespace std;
 static void mtest_status_main();
 static void mtest_thread_main(void *ud);
 
-struct Test {
+struct Test
+{
   Test(void(*tfun)(void*), const char* name) : tfun(tfun), name(name) {}
 
   void (*tfun)(void*);
