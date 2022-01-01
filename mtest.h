@@ -70,7 +70,7 @@
   }
 
 #define EXPECT_EQ(lhs, rhs) EXPECT_OP(lhs, ==, rhs)
-#define EXPECT_NE(lhs, rhs) EXPECT_OP(lhs, ==, rhs)
+#define EXPECT_NE(lhs, rhs) EXPECT_OP(lhs, !=, rhs)
 #define EXPECT_LT(lhs, rhs) EXPECT_OP(lhs, <, rhs)
 #define EXPECT_LE(lhs, rhs) EXPECT_OP(lhs, <=, rhs)
 #define EXPECT_GT(lhs, rhs) EXPECT_OP(lhs, >, rhs)
@@ -114,7 +114,7 @@
   }
 
 #define ASSERT_EQ(lhs, rhs) ASSERT_OP(lhs, ==, rhs)
-#define ASSERT_NE(lhs, rhs) ASSERT_OP(lhs, ==, rhs)
+#define ASSERT_NE(lhs, rhs) ASSERT_OP(lhs, !=, rhs)
 #define ASSERT_LT(lhs, rhs) ASSERT_OP(lhs, <, rhs)
 #define ASSERT_LE(lhs, rhs) ASSERT_OP(lhs, <=, rhs)
 #define ASSERT_GT(lhs, rhs) ASSERT_OP(lhs, >, rhs)
