@@ -78,7 +78,7 @@ struct Thread
 };
 
 mutex out_mutex;
-thread* status_thread;
+thread status_thread;
 
 static vector<Test>* all_tests;
 static vector<Thread*> threads;
@@ -170,7 +170,7 @@ int mtest_main(int argc, char **argv)
     threads.push_back(new Thread());
 
   // Initialize status thread
-  status_thread = new thread(&mtest_status_main);
+  status_thread = thread(mtest_status_main);
 
   for (unsigned int i = 0; i < all_tests->size(); ++i)
   {
@@ -230,7 +230,7 @@ int mtest_main(int argc, char **argv)
     thr->handle.join();
 
   // Wait for status thread
-  status_thread->join();
+  status_thread.join();
 
   clock_t tend_time = clock();
   _clear_row();
@@ -388,10 +388,10 @@ void mtest_thread_main(void *ud)
   {
     int creq = self->get_req();
 
-    if (self->req == -2)
+    if (creq == -2)
       break;
 
-    if (self->req == -1)
+    if (creq == -1)
     {
       _wait(BWAIT);
       continue;
@@ -484,8 +484,6 @@ void _cleanup()
 
   for (auto& t : threads)
     delete t;
-
-  delete status_thread;
 }
 
 void _wait(int ms)

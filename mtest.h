@@ -63,7 +63,7 @@
   {                                                                            \
     if (!((lhs) op (rhs))) {                                                   \
       _mtest_fail(__self)                                                      \
-        << "[" << __FILE__ << ":" << __LINE__ << "] "                          \
+        << __FILE__ << ":" << __LINE__ << " | "                                \
         << "failed expectation \"" << #lhs << " " << #op << " " << #rhs        \
         << "\": \"" << lhs << "\" !" #op << " \"" << rhs << "\"";              \
     }                                                                          \
