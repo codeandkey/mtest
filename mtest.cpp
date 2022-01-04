@@ -58,7 +58,7 @@ struct Test
 
 struct Thread
 {
-  Thread() : handle(mtest_thread_main, this), req(-1) {}
+  Thread() : handle(mtest_thread_main, this), mut(), req(-1) {}
 
   void set_req(int val)
   {
