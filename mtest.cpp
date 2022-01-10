@@ -288,6 +288,7 @@ int _get_terminal_width()
   GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
   return info.srWindow.Right - info.srWindow.Left + 1;
 #else
+  if (!isatty(fileno(stdout))) return 80;
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
   return w.ws_col;
@@ -344,6 +345,9 @@ void _set_color(int col)
 #ifndef MTEST_NOCOLOR
 #ifdef _WIN32
   HANDLE con = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD tmp;
+  const BOOL success = GetConsoleMode(con, &tmp);
+  if (!success) return;
 
   switch (col)
   {
@@ -361,6 +365,7 @@ void _set_color(int col)
     break;
   }
 #else
+  if (!isatty(fileno(stdout))) return;
   switch (col)
   {
   case RED:
@@ -470,6 +475,9 @@ void mtest_status_main() {
 
 void _clear_row()
 {
+#ifndef WIN32
+  if (!isatty(fileno(stdout))) return;
+#endif
   int width = _get_terminal_width();
   char *clr = (char *)malloc(width + 1);
   memset(clr, ' ', width);
