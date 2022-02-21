@@ -57,7 +57,7 @@ TEST(ComparisonTest) {
     EXPECT_GE(10, 50); // greater than (or equal)
 
     EXPECT_OP(5, != , 5);
-    EXPECT_OP(5, != , 5);
+    EXPECT_OP(5, <, 5);
 }
 
 // Test which always passes
