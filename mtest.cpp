@@ -43,7 +43,7 @@ using namespace std;
 #define RESET 3
 
 #define BWAIT 10
-#define STATUS_WAIT 250
+#define STATUS_WAIT 10
 
 static void mtest_status_main();
 static void mtest_thread_main(void *ud);
@@ -59,7 +59,7 @@ struct Test
 
 struct Thread
 {
-  Thread() : handle(mtest_thread_main, this), mut(), req(-1) {}
+  Thread(bool quiet = false) : handle(mtest_thread_main, this), mut(), req(-1), quiet(quiet) {}
 
   void set_req(int val)
   {
@@ -89,7 +89,8 @@ struct Thread
   thread handle;
   mutex mut;
   string target;
-  int req; // -2: 
+  int req; // -2: done, -1: idle, >=0: working
+  bool quiet;
 };
 
 mutex out_mutex;
@@ -143,7 +144,8 @@ int mtest_main(int argc, char **argv)
     }
   }
 
-  std::vector<string> to_run;
+  vector<string> to_run;
+  bool selected = false;
 
   // Parse arguments
   for (int i = 0; i < argc; ++i)
@@ -152,6 +154,7 @@ int mtest_main(int argc, char **argv)
       cout << "TEST OPTIONS:" << endl;
       cout << "    --mtest-help          | Displays this message." << endl;
       cout << "    --mtest-threads <num> | Sets the number of parallel tests." << endl;
+      cout << "    --enum-tests          | Enumerates the available tests." << endl;
       cout << "Additional arguments are treated as the test run list." << endl;
       cout << "By default every test will be run." << endl;
       return 0;
@@ -172,10 +175,32 @@ int mtest_main(int argc, char **argv)
         cout << "ERROR: invalid thread count to --mtest-threads" << endl;
         return -1;
       }
+    } else if (string(argv[i]) == "--enum-tests")
+    {
+      for (auto it = all_tests->begin(); it != all_tests->end(); ++it)
+      {
+        if (it != all_tests->begin())
+          cout << " ";
+        cout << it->first;
+      }
+      return 0;
     } else
     {
       // Add specific test
       to_run.emplace_back(argv[i]);
+    }
+  }
+
+  if (to_run.size() == 1)
+    selected = true;
+
+  for (auto& test : to_run)
+  {
+    try {
+      all_tests->at(test);
+    } catch (out_of_range e) {
+      cerr << "ERROR: unknown test " << test << endl;
+      return -1;
     }
   }
 
@@ -185,8 +210,11 @@ int mtest_main(int argc, char **argv)
 
   total_to_run = to_run.size();
 
-  _print_centered_header("TEST RUN (%d total): %s", to_run.size(), datestr);
-  cout << "    > Testing on " << num_threads << " threads" << endl;
+  if (!selected)
+  {
+    _print_centered_header("TEST RUN (%d total): %s", to_run.size(), datestr);
+    cout << "    > Testing on " << num_threads << " threads" << endl;
+  }
 
   // Determine name alignment
   for (auto it = to_run.begin(); it != to_run.end(); ++it)
@@ -194,10 +222,11 @@ int mtest_main(int argc, char **argv)
 
   // Initialize worker threads
   for (int i = 0; i < num_threads; ++i)
-    threads.push_back(new Thread());
+    threads.push_back(new Thread(selected));
 
   // Initialize status thread
-  status_thread = thread(mtest_status_main);
+  if (!selected)
+    status_thread = thread(mtest_status_main);
 
   for (string test : to_run)
   {
@@ -258,26 +287,30 @@ int mtest_main(int argc, char **argv)
     thr->handle.join();
 
   // Wait for status thread
-  status_thread.join();
+  if (!selected)
+    status_thread.join();
 
   clock_t tend_time = clock();
   _clear_row();
 
-  cout 
-    << "    > Finished testing in "
-    << setprecision(2)
-    << (float)(tend_time - tstart_time) / CLOCKS_PER_SEC
-    << " seconds" << endl;
+  if (!selected)
+    cout 
+      << "    > Finished testing in "
+      << setprecision(2)
+      << (float)(tend_time - tstart_time) / CLOCKS_PER_SEC
+      << " seconds" << endl;
 
   if (total_failures)
   {
-    _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,
-                           (failed_tests > 1) ? "S" : "");
+    if (!selected)
+      _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,
+                             (failed_tests > 1) ? "S" : "");
 
     for (string &test : to_run)
       if (all_tests->at(test).failures.size())
       {
-        cout << test << ":" << endl;
+        if (!selected)
+          cout << test << ":" << endl;
 
         for (auto &f : all_tests->at(test).failures)
           cout << "    " << f.str() << endl;
@@ -285,7 +318,8 @@ int mtest_main(int argc, char **argv)
   }
   else
   {
-    _print_centered_header("ALL TESTS PASSED");
+    if (!selected)
+      _print_centered_header("ALL TESTS PASSED");
   }
 
   _cleanup();
@@ -440,26 +474,29 @@ void mtest_thread_main(void *ud)
     out_mutex.lock();
     _clear_row();
 
-    cout
-      << "    " << setw((int)log10(all_tests->size()) + 1) << ++total_tested
-      << " / " << total_to_run
-      << "    " << setw(max_testlen) << all_tests->at(target).name
-      << " ... ";
-
-    if (all_tests->at(target).failures.size())
+    if (!self->quiet)
     {
-      _set_color(RED);
-      cout << "FAILED ";
-      _set_color(RESET);
+      cout
+        << "    " << setw((int)log10(all_tests->size()) + 1) << ++total_tested
+        << " / " << total_to_run
+        << "    " << setw(max_testlen) << all_tests->at(target).name
+        << " ... ";
 
-      ++failed_tests;
-    } else {
-      _set_color(GREEN);
-      cout << "OK     ";
-      _set_color(RESET);
+      if (all_tests->at(target).failures.size())
+      {
+        _set_color(RED);
+        cout << "FAILED ";
+        _set_color(RESET);
+
+        ++failed_tests;
+      } else {
+        _set_color(GREEN);
+        cout << "OK     ";
+        _set_color(RESET);
+      }
+
+      cout << "( " << (end_time - start_time) / (CLOCKS_PER_SEC / 1000) << " ms )" << endl;
     }
-
-    cout << "( " << (end_time - start_time) / (CLOCKS_PER_SEC / 1000) << " ms )" << endl;
 
     total_failures += all_tests->at(target).failures.size();
     out_mutex.unlock();
