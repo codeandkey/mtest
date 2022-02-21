@@ -29,6 +29,7 @@
 #include <chrono>
 #include <iostream>
 #include <iomanip>
+#include <map>
 #include <mutex>
 #include <sstream>
 #include <thread>
@@ -66,26 +67,41 @@ struct Thread
     req = val;
   }
 
-  int get_req()
+  int get_req(string* out_target = nullptr)
   {
     lock_guard<mutex> lock(mut);
+    if (out_target) *out_target = target;
     return req;
+  }
+
+  void set_target(string val)
+  {
+    lock_guard<mutex> lock(mut);
+    target = val;
+  }
+
+  string get_target()
+  {
+    lock_guard<mutex> lock(mut);
+    return target;
   }
 
   thread handle;
   mutex mut;
-  int req;
+  string target;
+  int req; // -2: 
 };
 
 mutex out_mutex;
 thread status_thread;
 
-static vector<Test>* all_tests;
+static map<string, Test>* all_tests;
 static vector<Thread*> threads;
 static int total_failures;
 static int total_tested;
 static int failed_tests;
 static int max_testlen;
+static int total_to_run;
 
 static int _get_terminal_width();
 static void _clear_row();
@@ -127,6 +143,8 @@ int mtest_main(int argc, char **argv)
     }
   }
 
+  std::vector<string> to_run;
+
   // Parse arguments
   for (int i = 0; i < argc; ++i)
   {
@@ -134,6 +152,8 @@ int mtest_main(int argc, char **argv)
       cout << "TEST OPTIONS:" << endl;
       cout << "    --mtest-help          | Displays this message." << endl;
       cout << "    --mtest-threads <num> | Sets the number of parallel tests." << endl;
+      cout << "Additional arguments are treated as the test run list." << endl;
+      cout << "By default every test will be run." << endl;
       return 0;
     } else if (string(argv[i]) == "--mtest-threads")
     {
@@ -152,18 +172,25 @@ int mtest_main(int argc, char **argv)
         cout << "ERROR: invalid thread count to --mtest-threads" << endl;
         return -1;
       }
+    } else
+    {
+      // Add specific test
+      to_run.emplace_back(argv[i]);
     }
   }
 
-  _print_centered_header("TEST RUN (%d total): %s", all_tests->size(), datestr);
+  if (!to_run.size())
+    for (auto it = all_tests->begin(); it != all_tests->end(); ++it)
+      to_run.push_back(it->first);
+
+  total_to_run = to_run.size();
+
+  _print_centered_header("TEST RUN (%d total): %s", to_run.size(), datestr);
   cout << "    > Testing on " << num_threads << " threads" << endl;
 
   // Determine name alignment
-  for (auto &t : *all_tests)
-  {
-    int len = strlen(t.name);
-    if (len > max_testlen) max_testlen = len;
-  }
+  for (auto it = to_run.begin(); it != to_run.end(); ++it)
+    if (it->size() > (unsigned) max_testlen) max_testlen = it->size();
 
   // Initialize worker threads
   for (int i = 0; i < num_threads; ++i)
@@ -172,7 +199,7 @@ int mtest_main(int argc, char **argv)
   // Initialize status thread
   status_thread = thread(mtest_status_main);
 
-  for (unsigned int i = 0; i < all_tests->size(); ++i)
+  for (string test : to_run)
   {
     // Wait for free worker
     int assigned = 0;
@@ -184,7 +211,8 @@ int mtest_main(int argc, char **argv)
           if (thr->req == -1)
           {
             assigned = 1;
-            thr->req = i;
+            thr->req = 1;
+            thr->target = test;
             thr->mut.unlock();
             break;
           }
@@ -246,12 +274,12 @@ int mtest_main(int argc, char **argv)
     _print_centered_header("SUMMARY OF %d FAILED TEST%s", failed_tests,
                            (failed_tests > 1) ? "S" : "");
 
-    for (auto &test : *all_tests)
-      if (test.failures.size())
+    for (string &test : to_run)
+      if (all_tests->at(test).failures.size())
       {
-        cout << test.name << ":" << endl;
+        cout << test << ":" << endl;
 
-        for (auto &f : test.failures)
+        for (auto &f : all_tests->at(test).failures)
           cout << "    " << f.str() << endl;
       }
   }
@@ -267,9 +295,9 @@ int mtest_main(int argc, char **argv)
 int _mtest_push(const char* name, void (*tfun)(void*))
 {
   if (!all_tests)
-    all_tests = new vector<Test>();
+    all_tests = new map<string, Test>();
 
-  all_tests->push_back(Test(tfun, name));
+  all_tests->emplace(make_pair(name, Test(tfun, name)));
 
   return all_tests->size();
 }
@@ -391,7 +419,8 @@ void mtest_thread_main(void *ud)
 
   while (1)
   {
-    int creq = self->get_req();
+    string target;
+    int creq = self->get_req(&target);
 
     if (creq == -2)
       break;
@@ -404,7 +433,7 @@ void mtest_thread_main(void *ud)
 
     // Run test!
     clock_t start_time = clock();
-    all_tests->at(creq).tfun(&all_tests->at(creq));
+    all_tests->at(target).tfun(&all_tests->at(target));
     clock_t end_time = clock();
 
     // Acquire output mutex
@@ -413,11 +442,11 @@ void mtest_thread_main(void *ud)
 
     cout
       << "    " << setw((int)log10(all_tests->size()) + 1) << ++total_tested
-      << " / " << all_tests->size()
-      << "    " << setw(max_testlen) << all_tests->at(creq).name
+      << " / " << total_to_run
+      << "    " << setw(max_testlen) << all_tests->at(target).name
       << " ... ";
 
-    if (all_tests->at(creq).failures.size())
+    if (all_tests->at(target).failures.size())
     {
       _set_color(RED);
       cout << "FAILED ";
@@ -432,7 +461,7 @@ void mtest_thread_main(void *ud)
 
     cout << "( " << (end_time - start_time) / (CLOCKS_PER_SEC / 1000) << " ms )" << endl;
 
-    total_failures += all_tests->at(creq).failures.size();
+    total_failures += all_tests->at(target).failures.size();
     out_mutex.unlock();
 
     self->set_req(-1);
@@ -450,7 +479,8 @@ void mtest_status_main() {
 
     for (auto &thr : threads)
     {
-      int cur = thr->get_req();
+      string target;
+      int cur = thr->get_req(&target);
 
       if (cur != -2)
         done = 0;
@@ -460,7 +490,7 @@ void mtest_status_main() {
       else if (cur == -1)
         cout << "(idle)";
       else
-        cout << all_tests->at(cur).name;
+        cout << target;
 
       if (thr != threads.back())
         cout << ", ";

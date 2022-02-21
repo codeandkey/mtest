@@ -1,3 +1,4 @@
+#define MTEST_MAIN
 #include "mtest.h"
 
 #include <math.h>
@@ -119,7 +120,3 @@ TEST(LongTest8) {
     j -= 1;
   }
 }
-
-// To run your tests, call mtest_main() with the command-line arguments.
-// The value returned from mtest_main() should be used as the exit code.
-int main(int argc, char **argv) { return mtest_main(argc, argv); }

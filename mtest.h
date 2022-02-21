@@ -133,4 +133,9 @@ int mtest_main(int argc, char **argv);
 int _mtest_push(const char* name, void(*tfun)(void*));
 std::ostream& _mtest_fail(void *self);
 
+// Define main if we are a test runner
+#ifdef MTEST_MAIN
+int main(int argc, char** argv) { return mtest_main(argc - 1, argv + 1); }
+#endif
+
 #endif
