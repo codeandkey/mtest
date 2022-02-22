@@ -4,7 +4,11 @@ if (NOT MTEST_SOURCE_DIR)
     set(MTEST_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 endif()
 
-file(GLOB_RECURSE MTEST_SOURCES "${CMAKE_SOURCE_DIR}" "*.cpp")
+file(GLOB_RECURSE MTEST_SOURCES "${MTEST_SOURCE_DIR}" "*.cpp")
+
+if (NOT MTEST_RUNNER)
+    message(FATAL_ERROR "MTEST_RUNNER is not set, must point to test executable!")
+endif()
 
 foreach(source ${MTEST_SOURCES})
     string(REGEX REPLACE ".*CMakeFiles.*" "" testsource "${source}")
@@ -21,7 +25,7 @@ foreach(testsource ${testsources})
         string (REGEX REPLACE "\\).*" "" testname "${testline}")
         string (REGEX REPLACE ".*\\(" "" testname "${testname}")
         message("> Discovered test : ${testname}")
-        add_test(NAME "${testname}" COMMAND ctest_example "${testname}")
+        add_test(NAME "${testname}" COMMAND ${MTEST_RUNNER} "${testname}")
     endforeach()
 endforeach()
 

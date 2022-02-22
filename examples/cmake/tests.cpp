@@ -1,4 +1,3 @@
-#define MTEST_MAIN
 #include "../../mtest.h"
 
 #include <math.h>
